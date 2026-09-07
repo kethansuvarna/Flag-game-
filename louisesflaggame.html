@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Louise's Flag Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ocean: #0f2a3d;
+    --ocean-deep: #0a1e2c;
+    --parchment: #e8dcc0;
+    --parchment-dim: #cdbf9c;
+    --brass: #c9a227;
+    --brass-bright: #e0bd4e;
+    --ink: #1b1b1b;
+    --cream: #f5efe0;
+    --correct: #22c55e;
+    --tier-border: #1e3a8a;
+    --tier-veryclose: #38bdf8;
+    --tier-moderate: #14b8a6;
+    --tier-far: #f97316;
+    --tier-veryfar: #ffd700;
+    --tier-unknown: #6b7280;
+    --tier-pending: #d100d1;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--ocean-deep);
+    color: var(--cream);
+    font-family: "Work Sans", sans-serif;
+    overflow-x: hidden;
+  }
+
+  #app {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- HEADER ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: linear-gradient(180deg, var(--ocean) 0%, var(--ocean-deep) 100%);
+    border-bottom: 2px solid var(--brass);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .title-block { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+
+  .title-block h1 {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    font-size: clamp(18px, 4.2vw, 26px);
+    margin: 0;
+    color: var(--cream);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .title-block .tagline { font-size: 11px; color: var(--parchment-dim); display: none; }
+  @media (min-width: 560px) { .title-block .tagline { display: inline; } }
+
+  .score-badge {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--ocean-deep);
+    border: 2px solid var(--brass);
+    border-radius: 10px;
+    padding: 6px 14px;
+    min-width: 90px;
+  }
+  .score-badge .score-label { font-size: 9px; letter-spacing: 1.5px; color: var(--brass-bright); margin-bottom: 2px; }
+  .score-badge .score-value { font-family: "Fraunces", serif; font-weight: 600; font-size: 19px; color: var(--cream); }
+
+  /* ---------- LAYOUT ---------- */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px;
+    max-width: 1560px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  @media (min-width: 860px) {
+    main { flex-direction: row; align-items: stretch; }
+  }
+
+  /* ---------- FLAG PANEL ---------- */
+  .panel {
+    background: var(--parchment);
+    color: var(--ink);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    flex-shrink: 0;
+  }
+  @media (min-width: 860px) { .panel { width: 270px; } }
+
+  .flag-stage {
+    background: var(--ocean-deep);
+    border: 3px solid var(--brass);
+    border-radius: 10px;
+    aspect-ratio: 4 / 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .flag-emoji {
+    font-size: clamp(64px, 18vw, 96px);
+    line-height: 1;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));
+    user-select: none;
+  }
+  .flag-stage .spin-label {
+    position: absolute; bottom: 8px; font-size: 10px; letter-spacing: 1.5px;
+    color: var(--brass-bright); display: none;
+  }
+  .flag-stage .spin-label.show { display: block; }
+
+  .attempt-row { display: flex; justify-content: center; gap: 6px; margin: 12px 0 6px; }
+  .attempt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--parchment-dim); border: 1px solid var(--ink); }
+  .attempt-dot.used-correct { background: var(--correct); }
+  .attempt-dot.used-wrong { background: #94a3b8; }
+  .attempt-dot.current { background: var(--brass); }
+
+  .instructions { text-align: center; font-size: 14px; line-height: 1.4; min-height: 40px; margin-top: 4px; }
+
+  .hint-box {
+    margin-top: 10px;
+    background: rgba(0,0,0,0.06);
+    border-left: 3px solid var(--brass);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    display: none;
+  }
+  .hint-box.show { display: block; }
+  .hint-box strong { color: #6b4e00; }
+
+  .proximity-tag {
+    display: none;
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: #fff;
+  }
+  .proximity-tag.show { display: block; }
+
+  .action-row { margin-top: 14px; display: flex; justify-content: center; }
+
+  button {
+    font-family: "Work Sans", sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 22px;
+    background: var(--brass);
+    color: var(--ink);
+    transition: transform 0.12s ease, background 0.12s ease;
+  }
+  button:hover { background: var(--brass-bright); }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.45; cursor: default; transform: none; }
+
+  .legend {
+    margin-top: 14px;
+    border-top: 1px solid rgba(0,0,0,0.15);
+    padding-top: 10px;
+    font-size: 11px;
+  }
+  .legend-title { font-weight: 600; margin-bottom: 6px; letter-spacing: 0.3px; }
+  .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ---------- MAP ---------- */
+  .map-wrap {
+    flex: 1;
+    background: var(--ocean);
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    border: 1px solid rgba(201,162,39,0.35);
+    overflow: hidden;
+    position: relative;
+    min-height: 480px;
+  }
+  @media (min-width: 860px) {
+    .map-wrap { min-height: 640px; align-self: stretch; }
+  }
+  @media (min-width: 1200px) {
+    .map-wrap { min-height: 760px; }
+  }
+  #map-svg { width: 100%; height: 100%; display: block; touch-action: none; }
+
+  #map-svg path.country {
+    fill: var(--parchment-dim);
+    stroke: var(--ocean);
+    stroke-width: 0.5;
+    vector-effect: non-scaling-stroke;
+    transition: fill 0.25s ease;
+    cursor: pointer;
+  }
+  #map-svg path.country:hover { fill: var(--parchment); }
+
+  #map-svg .guess-correct { fill: var(--correct) !important; }
+  #map-svg .tier-border { fill: var(--tier-border) !important; }
+  #map-svg .tier-veryclose { fill: var(--tier-veryclose) !important; }
+  #map-svg .tier-moderate { fill: var(--tier-moderate) !important; }
+  #map-svg .tier-far { fill: var(--tier-far) !important; }
+  #map-svg .tier-veryfar { fill: var(--tier-veryfar) !important; }
+  #map-svg .tier-unknown { fill: var(--tier-unknown) !important; }
+  #map-svg .tier-pending { fill: var(--tier-pending) !important; }
+
+  .marker-dot { fill: var(--brass); stroke: var(--ocean-deep); stroke-width: 1; }
+  g.marker:hover .marker-dot { fill: var(--brass-bright); }
+  g.marker { cursor: pointer; }
+
+  .map-status {
+    position: absolute; top: 10px; left: 12px; font-size: 11px;
+    color: var(--parchment-dim); background: rgba(10,30,44,0.8);
+    padding: 4px 9px; border-radius: 6px; display: none;
+  }
+  .map-status.show { display: block; }
+
+  .map-controls {
+    position: absolute; top: 10px; right: 10px;
+    display: flex; flex-direction: column; gap: 6px; z-index: 5;
+  }
+  .map-controls button {
+    width: 34px; height: 34px; padding: 0;
+    border-radius: 8px; font-size: 16px; line-height: 1;
+    background: rgba(10,30,44,0.85); color: var(--cream); border: 1px solid var(--brass);
+  }
+  .map-controls button:hover { background: var(--ocean); }
+
+  .map-hint-text {
+    position: absolute; bottom: 8px; left: 12px; right: 12px;
+    font-size: 10px; color: var(--parchment-dim); text-align: center;
+  }
+
+  .confirm-popup {
+    position: absolute;
+    left: 50%;
+    bottom: 34px;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(10,30,44,0.95);
+    border: 2px solid var(--brass);
+    border-radius: 12px;
+    padding: 12px 16px;
+    max-width: 90%;
+    width: 320px;
+    text-align: center;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+  }
+  .confirm-popup.hidden { display: none; }
+  .confirm-popup p { margin: 0 0 10px; font-size: 13px; line-height: 1.4; color: var(--cream); }
+  .confirm-popup p strong { color: var(--brass-bright); }
+  .confirm-buttons { display: flex; gap: 8px; justify-content: center; }
+  .confirm-buttons button { padding: 8px 16px; font-size: 13px; }
+  .confirm-buttons .cancel-btn { background: transparent; color: var(--cream); border: 1px solid var(--parchment-dim); }
+  .confirm-buttons .cancel-btn:hover { background: rgba(255,255,255,0.08); }
+
+  /* ---------- OVERLAY ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,30,44,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50; padding: 20px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay-card {
+    background: var(--parchment); color: var(--ink); border-radius: 16px;
+    padding: 28px 26px; max-width: 380px; width: 100%; text-align: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.5); border: 3px solid var(--brass);
+  }
+  .overlay-card h2 { font-family: "Fraunces", serif; font-weight: 600; font-size: 24px; margin: 0 0 8px; }
+  .overlay-card p { font-size: 14px; line-height: 1.5; margin: 8px 0 18px; }
+  .overlay-card .big-score { font-family: "Fraunces", serif; font-size: 42px; font-weight: 700; color: var(--correct); margin: 6px 0; }
+
+  #player-name-input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: "Work Sans", sans-serif;
+    border: 2px solid var(--brass);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    background: #fff;
+    color: var(--ink);
+  }
+  #player-name-input:focus { outline: none; border-color: var(--brass-bright); }
+
+  .leaderboard {
+    margin-top: 18px;
+    border-top: 1px solid rgba(0,0,0,0.15);
+    padding-top: 14px;
+    text-align: left;
+  }
+  .leaderboard-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; text-align: center; }
+  .leaderboard-note { font-size: 10px; opacity: 0.65; text-align: center; margin: -4px 0 8px; }
+  #leaderboard-list { margin: 0; padding: 0 0 0 22px; font-size: 13px; }
+  #leaderboard-list li { margin-bottom: 4px; }
+  #leaderboard-list li.you-row { font-weight: 700; color: #6b4e00; }
+  .overlay-card .lost-flag { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 10px 0 16px; }
+  .overlay-card .lost-flag .lost-emoji { font-size: 48px; line-height: 1; }
+  .overlay-card .lost-flag .lost-name { text-align: left; font-size: 13px; }
+  .overlay-card .lost-flag .lost-name strong { display: block; font-size: 15px; }
+
+  footer { text-align: center; font-size: 11px; color: var(--parchment-dim); padding: 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="title-block">
+      <h1>🌍 Louise's Flag Game</h1>
+      <span class="tagline">guess the country from its flag</span>
+    </div>
+    <div class="score-badge">
+      <span class="score-label">STREAK</span>
+      <span class="score-value" id="score-value">0 / 0</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="panel">
+      <div class="flag-stage">
+        <div class="flag-emoji" id="flag-display">🌐</div>
+        <span class="spin-label" id="spin-label">SPINNING…</span>
+      </div>
+
+      <div class="attempt-row" id="attempt-row">
+        <div class="attempt-dot" data-n="1"></div>
+        <div class="attempt-dot" data-n="2"></div>
+        <div class="attempt-dot" data-n="3"></div>
+      </div>
+
+      <div class="instructions" id="instructions">
+        Press "Spin the Globe" to reveal your first flag.
+      </div>
+
+      <div class="hint-box" id="hint-box"></div>
+      <div class="proximity-tag" id="proximity-tag"></div>
+
+      <div class="action-row">
+        <button id="main-btn">Spin the Globe</button>
+      </div>
+
+      <div class="legend">
+        <div class="legend-title">Heat-map guide (wrong guesses)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-pending)"></span> Selected (awaiting your confirmation)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-border)"></span> Right next door</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-veryclose)"></span> Very close (&lt;2,000 km)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-moderate)"></span> Moderate (2,000–5,000 km)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-far)"></span> Far (5,000–9,000 km)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-veryfar)"></span> Very far (&gt;9,000 km)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--correct)"></span> Correct!</div>
+      </div>
+    </div>
+
+    <div class="map-wrap">
+      <div class="map-status" id="map-status">Loading map…</div>
+      <div class="map-controls">
+        <button id="zoom-in" title="Zoom in">+</button>
+        <button id="zoom-out" title="Zoom out">−</button>
+        <button id="zoom-reset" title="Reset view">⟲</button>
+      </div>
+      <svg id="map-svg" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="confirm-popup hidden" id="confirm-popup">
+        <p id="confirm-text">Lock in this guess?</p>
+        <div class="confirm-buttons">
+          <button id="confirm-yes">Yes, lock it in</button>
+          <button id="confirm-no" class="cancel-btn">Cancel</button>
+        </div>
+      </div>
+      <div class="map-hint-text">Drag to pan · pinch or scroll to zoom · tap a country, then confirm to lock in your guess</div>
+    </div>
+  </main>
+
+  <footer>Made for Louise · 196 countries · map via world-atlas</footer>
+</div>
+
+<div class="overlay" id="start-overlay">
+  <div class="overlay-card">
+    <h2>Louise's Flag Game</h2>
+    <p>A flag spins onto the wheel. Drag and zoom the map, then tap the country it belongs to — you'll get a quick "are you sure?" pop-up before it locks in, so an accidental tap while panning won't cost you a try. You get up to three tries per flag — miss all three and your streak resets!</p>
+    <p style="font-size:12px; opacity:0.75;">Wrong guesses light up in a color showing how close you got. 1st miss also reveals the continent and a fun fact · 2nd miss reveals the capital &amp; national dish.</p>
+    <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" autocomplete="off">
+    <button id="start-btn">Start Playing</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="end-overlay">
+  <div class="overlay-card">
+    <h2>Game Over</h2>
+    <div class="lost-flag" id="lost-flag-block"></div>
+    <p id="end-para">You correctly identified</p>
+    <div class="big-score" id="final-score">0 / 0</div>
+    <p>flags in a row. Want to beat it?</p>
+    <div class="leaderboard">
+      <div class="leaderboard-title">🏆 Top 10 Streaks</div>
+      <div class="leaderboard-note">Saved on this device/browser only</div>
+      <ol id="leaderboard-list"></ol>
+    </div>
+    <button id="restart-btn">Play Again</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ============ COUNTRY DATA ============
+     iso  = ISO 3166-1 numeric code (matches world-atlas topojson feature ids)
+     iso2 = ISO 3166-1 alpha-2 code (used to build the emoji flag)
+     lat/lon = approximate capital coordinates - used for map markers on
+               very small countries AND as the proximity point for the
+               wrong-guess heat-map distance calculation.
+     All 196 commonly recognised countries (193 UN members + Vatican City,
+     the State of Palestine, and Taiwan).
+  */
+  const COUNTRIES = [
+    // ---------------- AFRICA (54) ----------------
+    {iso:12,  iso2:"dz", name:"Algeria", continent:"Africa", capital:"Algiers", dish:"Couscous", facts:["It is the largest country in Africa by land area.", "It shares a border with six other countries.", "Its coastline stretches along the Mediterranean Sea."], lat:36.75, lon:3.06},
+    {iso:24,  iso2:"ao", name:"Angola", continent:"Africa", capital:"Luanda", dish:"Muamba de Galinha", facts:["Its capital sits on the Atlantic coast and the nation is a major oil exporter.", "It was a Portuguese colony for centuries before independence.", "Its economy relies heavily on offshore oil production."], lat:-8.84, lon:13.23},
+    {iso:204, iso2:"bj", name:"Benin", continent:"Africa", capital:"Porto-Novo", dish:"Amiwo", facts:["It is considered the birthplace of the Vodun (Voodoo) religion.", "It was once known by a different colonial-era name.", "Its coastline lies along the Gulf of Guinea."], lat:6.50, lon:2.60},
+    {iso:72,  iso2:"bw", name:"Botswana", continent:"Africa", capital:"Gaborone", dish:"Seswaa", facts:["Roughly 70% of it is covered by the Kalahari Desert.", "Diamonds are one of its most valuable exports.", "It has one of Africa's longest-running stable democracies."], lat:-24.66, lon:25.91},
+    {iso:854, iso2:"bf", name:"Burkina Faso", continent:"Africa", capital:"Ouagadougou", dish:"Riz Gras", facts:["Its name translates to 'land of upright people.'", "It is a landlocked country in West Africa.", "It changed its name from a colonial-era name in 1984."], lat:12.37, lon:-1.52},
+    {iso:108, iso2:"bi", name:"Burundi", continent:"Africa", capital:"Gitega", dish:"Ubugali", facts:["It is one of the most densely populated countries in Africa despite being landlocked.", "It sits at the northern end of a large African lake.", "It is one of the smallest countries in mainland Africa."], lat:-3.43, lon:29.93},
+    {iso:132, iso2:"cv", name:"Cabo Verde", continent:"Africa", capital:"Praia", dish:"Cachupa", facts:["It is an archipelago of ten volcanic islands off the coast of West Africa.", "It was uninhabited until Portuguese sailors settled it.", "Its economy relies heavily on tourism and remittances."], lat:14.93, lon:-23.51},
+    {iso:120, iso2:"cm", name:"Cameroon", continent:"Africa", capital:"Yaoundé", dish:"Ndolé", facts:["It is nicknamed 'Africa in miniature' for its diverse landscapes and climates.", "Its northernmost tip touches Lake Chad.", "Football is enormously popular there, with a beloved national team."], lat:3.87, lon:11.52},
+    {iso:140, iso2:"cf", name:"Central African Republic", continent:"Africa", capital:"Bangui", dish:"Kanda", facts:["It is a landlocked country home to dense rainforests and diamond mines.", "It is one of the least densely populated countries in Africa.", "Diamonds and timber are among its key natural resources."], lat:4.37, lon:18.56},
+    {iso:148, iso2:"td", name:"Chad", continent:"Africa", capital:"N'Djamena", dish:"Daraba", facts:["It is named after a large lake that straddles several borders in the region.", "It is one of the hottest countries in the world.", "Its capital sits along a major river."], lat:12.11, lon:15.04},
+    {iso:174, iso2:"km", name:"Comoros", continent:"Africa", capital:"Moroni", dish:"Langouste à la Vanille", facts:["It is nicknamed the 'Perfume Islands' for its ylang-ylang exports.", "It has experienced numerous coups since gaining independence.", "Its main island is dominated by an active volcano."], lat:-11.70, lon:43.26},
+    {iso:178, iso2:"cg", name:"Republic of the Congo", continent:"Africa", capital:"Brazzaville", dish:"Saka Saka", facts:["A mighty river forms much of its border with a similarly named neighbor.", "Its capital sits directly across a river from another capital city.", "Oil is the backbone of its economy."], lat:-4.26, lon:15.28},
+    {iso:180, iso2:"cd", name:"DR Congo", continent:"Africa", capital:"Kinshasa", dish:"Fufu with Ndakala", facts:["It is home to the world's second-largest rainforest.", "It has immense mineral wealth, including cobalt and copper.", "A major African river flows through nearly its entire length."], lat:-4.32, lon:15.31},
+    {iso:262, iso2:"dj", name:"Djibouti", continent:"Africa", capital:"Djibouti City", dish:"Skoudehkaris", facts:["It sits at a narrow strait connecting a major sea to a gulf.", "It hosts several foreign military bases due to its strategic location.", "A crater lake within it is one of the lowest points in Africa."], lat:11.59, lon:43.15},
+    {iso:818, iso2:"eg", name:"Egypt", continent:"Africa", capital:"Cairo", dish:"Koshari", facts:["It is home to the only surviving ancient wonder of the world.", "A famous river flows through nearly its entire length.", "It has one of the longest continuous histories of any nation."], lat:30.04, lon:31.24},
+    {iso:226, iso2:"gq", name:"Equatorial Guinea", continent:"Africa", capital:"Malabo", dish:"Pepesoup", facts:["It is the only African country with Spanish as an official language.", "It is one of Africa's largest oil producers per capita.", "Its mainland and island territory are separated by open ocean."], lat:3.75, lon:8.78},
+    {iso:232, iso2:"er", name:"Eritrea", continent:"Africa", capital:"Asmara", dish:"Zigni", facts:["Its capital's colonial-era architecture has earned it a UNESCO listing.", "It has a long coastline along the Red Sea.", "It gained independence from a neighboring country in 1993."], lat:15.34, lon:38.93},
+    {iso:748, iso2:"sz", name:"Eswatini", continent:"Africa", capital:"Mbabane", dish:"Sishwala", facts:["It is one of the last absolute monarchies in the world.", "It changed its official name in 2018.", "It is one of the smallest countries in Africa by area."], lat:-26.32, lon:31.13},
+    {iso:231, iso2:"et", name:"Ethiopia", continent:"Africa", capital:"Addis Ababa", dish:"Injera with Wat", facts:["It is the only African country never colonized by a European power.", "It uses its own unique calendar with 13 months.", "It is believed to be an early birthplace of coffee."], lat:9.03, lon:38.74},
+    {iso:266, iso2:"ga", name:"Gabon", continent:"Africa", capital:"Libreville", dish:"Poulet Nyembwe", facts:["Over 80% of it is covered by rainforest.", "Oil revenues have historically driven much of its economy.", "It sits directly on the Equator."], lat:0.42, lon:9.45},
+    {iso:270, iso2:"gm", name:"Gambia", continent:"Africa", capital:"Banjul", dish:"Domoda", facts:["It is the smallest country on mainland Africa, hugging a single river.", "It is almost entirely surrounded by a single larger neighboring country.", "A major river runs through the length of the country."], lat:13.45, lon:-16.58},
+    {iso:288, iso2:"gh", name:"Ghana", continent:"Africa", capital:"Accra", dish:"Jollof Rice", facts:["It was the first sub-Saharan African country to gain independence from colonial rule.", "It was formerly known as the Gold Coast.", "Cocoa is one of its most important exports."], lat:5.60, lon:-0.19},
+    {iso:324, iso2:"gn", name:"Guinea", continent:"Africa", capital:"Conakry", dish:"Riz Gras", facts:["It holds some of the world's largest reserves of bauxite.", "It is a major global source of bauxite ore.", "Several major West African rivers originate in its highlands."], lat:9.51, lon:-13.71},
+    {iso:624, iso2:"gw", name:"Guinea-Bissau", continent:"Africa", capital:"Bissau", dish:"Jollof Rice", facts:["Its offshore archipelago is a UNESCO biosphere reserve.", "It gained independence from Portugal in the 1970s.", "Cashew nuts are among its most important exports."], lat:11.86, lon:-15.60},
+    {iso:384, iso2:"ci", name:"Ivory Coast", continent:"Africa", capital:"Yamoussoukro", dish:"Attiéké", facts:["It is the world's largest producer of cocoa beans.", "It has two official capital cities.", "Its coastline lies along the Gulf of Guinea."], lat:6.83, lon:-5.29},
+    {iso:404, iso2:"ke", name:"Kenya", continent:"Africa", capital:"Nairobi", dish:"Ugali", facts:["The Great Rift Valley cuts through this East African nation.", "It is famous for its long-distance running champions.", "Its coast lies along the Indian Ocean."], lat:-1.29, lon:36.82},
+    {iso:426, iso2:"ls", name:"Lesotho", continent:"Africa", capital:"Maseru", dish:"Papa and Moroho", facts:["It is entirely surrounded by a single other country, earning it the nickname 'Kingdom in the Sky.'", "Its entire territory sits at a high altitude.", "It is one of only three countries entirely surrounded by another."], lat:-29.31, lon:27.48},
+    {iso:430, iso2:"lr", name:"Liberia", continent:"Africa", capital:"Monrovia", dish:"Cassava Leaf Soup", facts:["It was founded by freed American slaves in the 19th century.", "Its flag closely resembles that of the United States.", "It endured a devastating civil war in the 1990s."], lat:6.29, lon:-10.80},
+    {iso:434, iso2:"ly", name:"Libya", continent:"Africa", capital:"Tripoli", dish:"Bazin", facts:["It holds Africa's largest proven oil reserves.", "It has one of the longest Mediterranean coastlines in Africa.", "Most of its population lives near the coast."], lat:32.89, lon:13.19},
+    {iso:450, iso2:"mg", name:"Madagascar", continent:"Africa", capital:"Antananarivo", dish:"Romazava", facts:["It is the world's fourth-largest island, home to lemurs found nowhere else.", "Over 90% of its wildlife exists nowhere else on Earth.", "It separated from mainland Africa millions of years ago."], lat:-18.88, lon:47.51},
+    {iso:454, iso2:"mw", name:"Malawi", continent:"Africa", capital:"Lilongwe", dish:"Nsima", facts:["A massive rift lake takes up about a fifth of its total area.", "It is nicknamed the 'Warm Heart of Africa.'", "Tobacco has long been a major export crop."], lat:-13.96, lon:33.79},
+    {iso:466, iso2:"ml", name:"Mali", continent:"Africa", capital:"Bamako", dish:"Tiguadege Na", facts:["It was once home to the fabled trading city of Timbuktu.", "It is a landlocked country in West Africa.", "Ancient manuscripts are preserved in one of its historic cities."], lat:12.65, lon:-8.00},
+    {iso:478, iso2:"mr", name:"Mauritania", continent:"Africa", capital:"Nouakchott", dish:"Thieboudienne", facts:["Much of it lies within the Sahara Desert.", "Much of its population lives in a single major city.", "Iron ore is one of its most valuable exports."], lat:18.09, lon:-15.98},
+    {iso:480, iso2:"mu", name:"Mauritius", continent:"Africa", capital:"Port Louis", dish:"Dholl Puri", facts:["The dodo bird once lived only on this Indian Ocean island.", "It has no native land mammals besides bats.", "Sugarcane has historically shaped much of its economy."], lat:-20.16, lon:57.50},
+    {iso:504, iso2:"ma", name:"Morocco", continent:"Africa", capital:"Rabat", dish:"Couscous", facts:["Its blue-painted mountain city draws visitors from around the world.", "It is separated from Europe by a narrow strait.", "It has a mix of Arab, Berber, and French influences."], lat:34.02, lon:-6.83},
+    {iso:508, iso2:"mz", name:"Mozambique", continent:"Africa", capital:"Maputo", dish:"Piri Piri Chicken", facts:["Its coastline stretches for over 2,000 kilometers along the Indian Ocean.", "It has an extensive coastline along the Indian Ocean.", "It was a Portuguese colony for centuries."], lat:-25.97, lon:32.57},
+    {iso:516, iso2:"na", name:"Namibia", continent:"Africa", capital:"Windhoek", dish:"Potjiekos", facts:["It is home to one of the oldest deserts on Earth.", "It is one of the least densely populated countries on Earth.", "Diamonds are found along parts of its coastline."], lat:-22.56, lon:17.08},
+    {iso:562, iso2:"ne", name:"Niger", continent:"Africa", capital:"Niamey", dish:"Tuwo", facts:["Most of it lies within the Sahara Desert.", "It is one of the hottest and driest countries in the world.", "It is named after a major West African river."], lat:13.51, lon:2.11},
+    {iso:566, iso2:"ng", name:"Nigeria", continent:"Africa", capital:"Abuja", dish:"Jollof Rice", facts:["It is the most populous country in Africa.", "It is one of the world's largest oil producers.", "Its film industry is one of the largest in the world by output."], lat:9.08, lon:7.40},
+    {iso:646, iso2:"rw", name:"Rwanda", continent:"Africa", capital:"Kigali", dish:"Isombe", facts:["It is nicknamed the 'Land of a Thousand Hills.'", "It has made major strides in gender representation in government.", "Mountain gorillas live in its volcanic highlands."], lat:-1.94, lon:30.06},
+    {iso:678, iso2:"st", name:"Sao Tome and Principe", continent:"Africa", capital:"São Tomé", dish:"Calulu", facts:["It is Africa's second-smallest country, made up of two volcanic islands.", "It is one of the smallest countries in Africa by population.", "Cocoa was historically its most important export."], lat:0.34, lon:6.73},
+    {iso:686, iso2:"sn", name:"Senegal", continent:"Africa", capital:"Dakar", dish:"Thieboudienne", facts:["Its capital sits at the westernmost point of mainland Africa.", "Its capital is one of the westernmost cities on the continent.", "It nearly completely surrounds a much smaller neighboring country."], lat:14.72, lon:-17.47},
+    {iso:690, iso2:"sc", name:"Seychelles", continent:"Africa", capital:"Victoria", dish:"Grilled Fish with Rice", facts:["It is made up of 115 islands scattered across the Indian Ocean.", "It has one of the smallest populations of any African country.", "Giant tortoises are native to some of its islands."], lat:-4.62, lon:55.45},
+    {iso:694, iso2:"sl", name:"Sierra Leone", continent:"Africa", capital:"Freetown", dish:"Cassava Leaf Stew", facts:["Its capital's name reflects its founding as a haven for freed slaves.", "Diamonds have played a major role in its modern history.", "It has one of the world's best natural harbors."], lat:8.48, lon:-13.23},
+    {iso:706, iso2:"so", name:"Somalia", continent:"Africa", capital:"Mogadishu", dish:"Bariis Iskukaris", facts:["It has the longest coastline on mainland Africa.", "Its shape gives the Horn of Africa its name.", "It has experienced decades of political instability."], lat:2.05, lon:45.32},
+    {iso:710, iso2:"za", name:"South Africa", continent:"Africa", capital:"Pretoria", dish:"Bobotie", facts:["It has three separate capital cities.", "It hosted the first FIFA World Cup held in Africa.", "It has eleven official languages."], lat:-25.75, lon:28.19},
+    {iso:728, iso2:"ss", name:"South Sudan", continent:"Africa", capital:"Juba", dish:"Kissra", facts:["It is the world's newest widely recognized country, gaining independence in 2011.", "It seceded from a larger northern neighbor in 2011.", "Oil is central to its economy."], lat:4.85, lon:31.58},
+    {iso:729, iso2:"sd", name:"Sudan", continent:"Africa", capital:"Khartoum", dish:"Ful Medames", facts:["It is home to more ancient pyramids than any other country.", "It was once the largest country in Africa by area.", "Two major tributaries of a famous river meet within its territory."], lat:15.50, lon:32.56},
+    {iso:834, iso2:"tz", name:"Tanzania", continent:"Africa", capital:"Dodoma", dish:"Ugali", facts:["It is home to the highest peak on its continent.", "It is home to one of the world's great wildlife migrations.", "Its territory includes a famous spice-producing island."], lat:-6.16, lon:35.75},
+    {iso:768, iso2:"tg", name:"Togo", continent:"Africa", capital:"Lomé", dish:"Fufu with Groundnut Soup", facts:["It is a narrow strip of a country stretching north from the Atlantic coast.", "It is one of the narrowest countries in the world.", "Phosphate mining has long been important to its economy."], lat:6.13, lon:1.22},
+    {iso:788, iso2:"tn", name:"Tunisia", continent:"Africa", capital:"Tunis", dish:"Couscous", facts:["Sahara dunes and a Mediterranean coastline meet within its borders.", "It is the northernmost country in Africa.", "It was the birthplace of the Arab Spring movement in 2010-2011."], lat:36.81, lon:10.18},
+    {iso:800, iso2:"ug", name:"Uganda", continent:"Africa", capital:"Kampala", dish:"Matoke", facts:["Winston Churchill once called it the 'Pearl of Africa.'", "The source of a major African river lies within it.", "Mountain gorillas can be found in its southwestern forests."], lat:0.35, lon:32.58},
+    {iso:894, iso2:"zm", name:"Zambia", continent:"Africa", capital:"Lusaka", dish:"Nshima", facts:["One of the world's largest waterfalls, 'the Smoke that Thunders,' sits on its border.", "It shares a famous waterfall with a neighboring country.", "Copper mining is central to its economy."], lat:-15.39, lon:28.32},
+    {iso:716, iso2:"zw", name:"Zimbabwe", continent:"Africa", capital:"Harare", dish:"Sadza", facts:["Ancient stone ruins gave this country its name, meaning 'houses of stone.'", "It was formerly known by a different colonial-era name.", "It shares a famous waterfall with a neighboring country."], lat:-17.83, lon:31.05},
+
+    // ---------------- ASIA (46) ----------------
+    {iso:4,   iso2:"af", name:"Afghanistan", continent:"Asia", capital:"Kabul", dish:"Kabuli Pulao", facts:["It is a mountainous, landlocked country at the crossroads of Central and South Asia.", "It has been at the crossroads of empires for centuries.", "It is famous for towering mountain ranges in its north and east."], lat:34.56, lon:69.21},
+    {iso:51,  iso2:"am", name:"Armenia", continent:"Asia", capital:"Yerevan", dish:"Khorovats", facts:["It claims to be the first nation to adopt Christianity as a state religion.", "It has its own unique alphabet dating back over 1,500 years.", "A mountain sacred to its culture is visible near its border."], lat:40.18, lon:44.51},
+    {iso:31,  iso2:"az", name:"Azerbaijan", continent:"Asia", capital:"Baku", dish:"Plov", facts:["It is nicknamed the 'Land of Fire' for its natural gas seeps.", "It borders one of the world's largest inland bodies of water.", "It is historically known for producing caviar."], lat:40.41, lon:49.87},
+    {iso:48,  iso2:"bh", name:"Bahrain", continent:"Asia", capital:"Manama", dish:"Machboos", facts:["This small archipelago nation is connected to a neighboring country by a causeway.", "It was historically famous for natural pearl diving.", "It is one of the smallest nations in Asia by area."], lat:26.23, lon:50.59},
+    {iso:50,  iso2:"bd", name:"Bangladesh", continent:"Asia", capital:"Dhaka", dish:"Ilish Bhape", facts:["It has one of the largest river deltas in the world.", "It is one of the most densely populated countries in the world.", "It is highly vulnerable to seasonal flooding and cyclones."], lat:23.81, lon:90.41},
+    {iso:64,  iso2:"bt", name:"Bhutan", continent:"Asia", capital:"Thimphu", dish:"Ema Datshi", facts:["It measures national success using 'Gross National Happiness' instead of GDP alone.", "It was one of the last countries to introduce television.", "Its national sport involves archery."], lat:27.47, lon:89.64},
+    {iso:96,  iso2:"bn", name:"Brunei", continent:"Asia", capital:"Bandar Seri Begawan", dish:"Ambuyat", facts:["This small, oil-rich nation sits on the island of Borneo.", "Its ruling family has held power for centuries.", "It has substantial oil and natural gas wealth."], lat:4.94, lon:114.95},
+    {iso:116, iso2:"kh", name:"Cambodia", continent:"Asia", capital:"Phnom Penh", dish:"Amok", facts:["It is home to the largest religious monument in the world.", "Its flag is one of the few to feature a building.", "It endured a brutal genocide in the 1970s."], lat:11.56, lon:104.92},
+    {iso:156, iso2:"cn", name:"China", continent:"Asia", capital:"Beijing", dish:"Peking Duck", facts:["It is home to more people than any other country.", "It has one of the oldest continuous written languages.", "A famous ancient wall stretches thousands of kilometers across it."], lat:39.90, lon:116.41},
+    {iso:268, iso2:"ge", name:"Georgia", continent:"Asia", capital:"Tbilisi", dish:"Khachapuri", facts:["It straddles the border between Europe and Asia in the Caucasus Mountains.", "It is considered one of the birthplaces of winemaking.", "Its cuisine features a beloved cheese-filled bread."], lat:41.72, lon:44.79},
+    {iso:356, iso2:"in", name:"India", continent:"Asia", capital:"New Delhi", dish:"Butter Chicken", facts:["It is the most populous country in the world.", "It is home to one of the world's most famous mausoleums.", "It has more officially recognized languages than almost any other country."], lat:28.61, lon:77.21},
+    {iso:360, iso2:"id", name:"Indonesia", continent:"Asia", capital:"Jakarta", dish:"Nasi Goreng", facts:["It is made up of more than 17,000 islands.", "It has more active volcanoes than almost any other country.", "It is home to the world's largest lizard species."], lat:-6.21, lon:106.85},
+    {iso:364, iso2:"ir", name:"Iran", continent:"Asia", capital:"Tehran", dish:"Chelo Kabab", facts:["It is home to one of the oldest continuous civilizations in history.", "It was historically known by a different name in the West.", "It has one of the oldest continuously inhabited cities on Earth."], lat:35.69, lon:51.39},
+    {iso:368, iso2:"iq", name:"Iraq", continent:"Asia", capital:"Baghdad", dish:"Masgouf", facts:["The ancient region often called the 'cradle of civilization' lies within it.", "Two famous ancient rivers flow through it.", "It was home to some of the earliest known writing systems."], lat:33.31, lon:44.36},
+    {iso:376, iso2:"il", name:"Israel", continent:"Asia", capital:"Jerusalem", dish:"Falafel", facts:["It is home to a sea so salty that swimmers float effortlessly.", "It has turned desert land into productive farmland through irrigation.", "Sites within it are considered sacred by three major world religions."], lat:31.78, lon:35.22},
+    {iso:392, iso2:"jp", name:"Japan", continent:"Asia", capital:"Tokyo", dish:"Sushi", facts:["It is an archipelago of nearly 7,000 islands.", "It experiences thousands of earthquakes every year.", "It has one of the world's fastest passenger train networks."], lat:35.68, lon:139.69},
+    {iso:400, iso2:"jo", name:"Jordan", continent:"Asia", capital:"Amman", dish:"Mansaf", facts:["An ancient rose-colored city carved into rock lies within its desert.", "Much of it is covered by desert.", "It borders a famously salty inland sea."], lat:31.95, lon:35.93},
+    {iso:398, iso2:"kz", name:"Kazakhstan", continent:"Asia", capital:"Astana", dish:"Beshbarmak", facts:["It is the largest landlocked country in the world.", "It is home to a major spaceport used for space launches.", "It was the last Soviet republic to declare independence."], lat:51.18, lon:71.45},
+    {iso:414, iso2:"kw", name:"Kuwait", continent:"Asia", capital:"Kuwait City", dish:"Machboos", facts:["It is one of the world's leading oil exporters despite its small size.", "It has one of the highest concentrations of oil reserves in the world.", "It was invaded by a neighboring country in 1990."], lat:29.38, lon:47.98},
+    {iso:417, iso2:"kg", name:"Kyrgyzstan", continent:"Asia", capital:"Bishkek", dish:"Beshbarmak", facts:["Much of it is covered by a vast Central Asian mountain range.", "Nomadic horseback culture remains an important tradition there.", "Its capital sits at the foot of snow-capped mountains."], lat:42.87, lon:74.59},
+    {iso:418, iso2:"la", name:"Laos", continent:"Asia", capital:"Vientiane", dish:"Laap", facts:["It is the only landlocked country in Southeast Asia.", "It is scattered with thousands of unexploded bombs from a past conflict.", "It has no direct access to the sea."], lat:17.97, lon:102.60},
+    {iso:422, iso2:"lb", name:"Lebanon", continent:"Asia", capital:"Beirut", dish:"Kibbeh", facts:["Ancient cedar trees, a national symbol, grow in its mountains.", "Its capital was once nicknamed the 'Paris of the Middle East.'", "It has one of the highest numbers of officially recognized religious sects."], lat:33.89, lon:35.50},
+    {iso:458, iso2:"my", name:"Malaysia", continent:"Asia", capital:"Kuala Lumpur", dish:"Nasi Lemak", facts:["It is split between a peninsula and part of the island of Borneo.", "It is home to twin towers that were once the world's tallest.", "Its rainforests are among the oldest in the world."], lat:3.14, lon:101.69},
+    {iso:462, iso2:"mv", name:"Maldives", continent:"Asia", capital:"Malé", dish:"Garudhiya", facts:["It is the lowest-lying country in the world, made of coral atolls.", "It is at serious risk from rising sea levels.", "Tourism is its most important economic sector."], lat:4.18, lon:73.51},
+    {iso:496, iso2:"mn", name:"Mongolia", continent:"Asia", capital:"Ulaanbaatar", dish:"Buuz", facts:["It is the world's least densely populated sovereign country.", "A legendary conqueror united its tribes into a vast historical empire.", "Traditional nomadic herding remains common there today."], lat:47.92, lon:106.92},
+    {iso:104, iso2:"mm", name:"Myanmar", continent:"Asia", capital:"Naypyidaw", dish:"Mohinga", facts:["It is home to thousands of ancient Buddhist temples spread across a single plain.", "It was formerly known by a different name internationally.", "Its economy has long relied on rice cultivation."], lat:19.76, lon:96.08},
+    {iso:524, iso2:"np", name:"Nepal", continent:"Asia", capital:"Kathmandu", dish:"Dal Bhat", facts:["It is home to the world's tallest mountain.", "It is the only country with a non-rectangular national flag.", "It was never colonized by a foreign power."], lat:27.72, lon:85.32},
+    {iso:408, iso2:"kp", name:"North Korea", continent:"Asia", capital:"Pyongyang", dish:"Naengmyeon", facts:["It is one of the most isolated countries in the world.", "It has been led by the same family for three generations.", "Its capital features grand, monumental architecture."], lat:39.02, lon:125.75},
+    {iso:512, iso2:"om", name:"Oman", continent:"Asia", capital:"Muscat", dish:"Shuwa", facts:["Its coastline stretches along both the Arabian Sea and a namesake gulf.", "It controls a strategic point at the mouth of a major oil shipping route.", "Frankincense has been harvested there for thousands of years."], lat:23.61, lon:58.59},
+    {iso:586, iso2:"pk", name:"Pakistan", continent:"Asia", capital:"Islamabad", dish:"Biryani", facts:["It is home to more than 100 peaks over 7,000 meters tall.", "It is home to the world's second-highest mountain.", "It was created through the partition of a larger colonial territory."], lat:33.68, lon:73.05},
+    {iso:608, iso2:"ph", name:"Philippines", continent:"Asia", capital:"Manila", dish:"Adobo", facts:["It is made up of more than 7,600 islands.", "It was named after a European king.", "Typhoons frequently affect the islands each year."], lat:14.60, lon:120.98},
+    {iso:634, iso2:"qa", name:"Qatar", continent:"Asia", capital:"Doha", dish:"Machbous", facts:["It occupies a small peninsula jutting into the Persian Gulf.", "It has one of the highest per-capita incomes in the world.", "It hosted a major global football tournament in 2022."], lat:25.29, lon:51.53},
+    {iso:682, iso2:"sa", name:"Saudi Arabia", continent:"Asia", capital:"Riyadh", dish:"Kabsa", facts:["It is home to Islam's two holiest cities.", "It has some of the largest oil reserves in the world.", "Its terrain is dominated by vast deserts."], lat:24.71, lon:46.68},
+    {iso:702, iso2:"sg", name:"Singapore", continent:"Asia", capital:"Singapore", dish:"Chicken Rice", facts:["It is one of only a few surviving city-states in the modern world.", "It has strict laws that keep its streets famously clean.", "It is one of the busiest shipping ports in the world."], lat:1.35, lon:103.82},
+    {iso:410, iso2:"kr", name:"South Korea", continent:"Asia", capital:"Seoul", dish:"Kimchi", facts:["It is one of the most densely populated countries in the world.", "It is a global leader in electronics and technology manufacturing.", "Its pop music and dramas have a huge worldwide following."], lat:37.57, lon:126.98},
+    {iso:144, iso2:"lk", name:"Sri Lanka", continent:"Asia", capital:"Sri Jayawardenepura Kotte", dish:"Rice and Curry", facts:["This teardrop-shaped island was once known by a different colonial-era name.", "It is one of the world's largest tea exporters.", "Ancient royal cities dot its interior."], lat:6.90, lon:79.92},
+    {iso:760, iso2:"sy", name:"Syria", continent:"Asia", capital:"Damascus", dish:"Kibbeh", facts:["Its capital is considered one of the oldest continuously inhabited cities on Earth.", "It has been shaped by thousands of years of continuous settlement.", "A long civil conflict has affected it since 2011."], lat:33.51, lon:36.28},
+    {iso:762, iso2:"tj", name:"Tajikistan", continent:"Asia", capital:"Dushanbe", dish:"Plov", facts:["Over 90% of it is covered by mountains.", "It is among the poorest countries in Central Asia by some measures.", "It shares a rugged, mountainous border with Afghanistan."], lat:38.56, lon:68.79},
+    {iso:764, iso2:"th", name:"Thailand", continent:"Asia", capital:"Bangkok", dish:"Pad Thai", facts:["It is the only country in Southeast Asia never colonized by a European power.", "It was never colonized by a European power.", "Its cuisine is famous for balancing sweet, sour, salty, and spicy flavors."], lat:13.75, lon:100.50},
+    {iso:626, iso2:"tl", name:"Timor-Leste", continent:"Asia", capital:"Dili", dish:"Ikan Sabuko", facts:["It gained independence in the early 2000s after centuries of colonial rule.", "It is one of the world's newest independent nations.", "Coffee is one of its main agricultural exports."], lat:-8.56, lon:125.57},
+    {iso:792, iso2:"tr", name:"Turkey", continent:"Asia", capital:"Ankara", dish:"Kebab", facts:["It is the only country that lies on two continents at once.", "A historic strait divides its European and Asian sides.", "Its largest city was once the capital of two great empires."], lat:39.93, lon:32.86},
+    {iso:795, iso2:"tm", name:"Turkmenistan", continent:"Asia", capital:"Ashgabat", dish:"Plov", facts:["A fiery crater nicknamed the 'Door to Hell' has burned there for decades.", "Much of it is covered by a vast desert.", "Natural gas is central to its economy."], lat:37.95, lon:58.38},
+    {iso:784, iso2:"ae", name:"United Arab Emirates", continent:"Asia", capital:"Abu Dhabi", dish:"Al Machboos", facts:["It is home to the world's tallest building.", "It is a federation of seven separate emirates.", "It has transformed rapidly from a desert economy to a global hub."], lat:24.47, lon:54.37},
+    {iso:860, iso2:"uz", name:"Uzbekistan", continent:"Asia", capital:"Tashkent", dish:"Plov", facts:["It is one of only two countries in the world surrounded entirely by other landlocked countries.", "Historic Silk Road cities lie within its borders.", "Cotton has long been central to its economy."], lat:41.30, lon:69.24},
+    {iso:704, iso2:"vn", name:"Vietnam", continent:"Asia", capital:"Hanoi", dish:"Phở", facts:["It has a coastline stretching over 3,000 kilometers.", "It is one of the world's largest coffee exporters.", "It endured a long and costly war in the 20th century."], lat:21.03, lon:105.85},
+    {iso:887, iso2:"ye", name:"Yemen", continent:"Asia", capital:"Sana'a", dish:"Saltah", facts:["An island off its coast is home to strange, umbrella-shaped 'dragon's blood' trees.", "It is home to one of the oldest skyscraper cities, built from mud brick.", "It has faced a prolonged and devastating civil conflict."], lat:15.37, lon:44.19},
+
+    // ---------------- EUROPE (44) ----------------
+    {iso:8,   iso2:"al", name:"Albania", continent:"Europe", capital:"Tirana", dish:"Tavë Kosi", facts:["Its flag features a two-headed eagle, a symbol dating back centuries.", "It was isolated under a strict communist government for decades.", "Its coastline lies along both the Adriatic and Ionian Seas."], lat:41.33, lon:19.82},
+    {iso:20,  iso2:"ad", name:"Andorra", continent:"Europe", capital:"Andorra la Vella", dish:"Trinxat", facts:["It is a tiny country tucked high in the Pyrenees mountains.", "It is jointly headed by two co-princes from neighboring countries.", "Skiing tourism is central to its economy."], lat:42.51, lon:1.52},
+    {iso:40,  iso2:"at", name:"Austria", continent:"Europe", capital:"Vienna", dish:"Wiener Schnitzel", facts:["One of classical music's most famous composers was born in its capital.", "It was once the heart of a sprawling European empire.", "Alpine mountains cover much of its territory."], lat:48.21, lon:16.37},
+    {iso:112, iso2:"by", name:"Belarus", continent:"Europe", capital:"Minsk", dish:"Draniki", facts:["A large portion of Europe's last primeval forest lies within its borders.", "It has close political and economic ties with Russia.", "Much of it was devastated during World War II."], lat:53.90, lon:27.57},
+    {iso:56,  iso2:"be", name:"Belgium", continent:"Europe", capital:"Brussels", dish:"Moules-Frites", facts:["It is home to more castles per square mile than almost anywhere else in the world.", "It is headquarters to major European Union institutions.", "It is famous for chocolate, waffles, and beer."], lat:50.85, lon:4.35},
+    {iso:70,  iso2:"ba", name:"Bosnia and Herzegovina", continent:"Europe", capital:"Sarajevo", dish:"Ćevapi", facts:["A bridge in one of its cities is a UNESCO World Heritage site symbolizing reconciliation.", "A pivotal event that helped spark World War I occurred in its capital.", "It endured a brutal war in the 1990s."], lat:43.86, lon:18.41},
+    {iso:100, iso2:"bg", name:"Bulgaria", continent:"Europe", capital:"Sofia", dish:"Banitsa", facts:["It is one of the oldest countries in Europe, founded in 681 AD.", "It has produced roses used in perfumes for centuries.", "Ancient Thracian treasures have been unearthed within it."], lat:42.70, lon:23.32},
+    {iso:191, iso2:"hr", name:"Croatia", continent:"Europe", capital:"Zagreb", dish:"Štrukli", facts:["Its rugged coastline includes over a thousand islands.", "Its coastline has become a major yachting and tourism destination.", "A former Yugoslav republic, it gained independence in the early 1990s."], lat:45.81, lon:15.98},
+    {iso:196, iso2:"cy", name:"Cyprus", continent:"Europe", capital:"Nicosia", dish:"Souvlaki", facts:["According to legend, the goddess of love was born from the sea near its shores.", "It is divided between two different governing authorities.", "Ancient copper mining gave the element its very name."], lat:35.17, lon:33.36},
+    {iso:203, iso2:"cz", name:"Czechia", continent:"Europe", capital:"Prague", dish:"Svíčková", facts:["Its capital is nicknamed the 'City of a Hundred Spires.'", "It is famous for its long tradition of beer brewing.", "It was formerly part of a union with a neighboring Slavic nation."], lat:50.08, lon:14.44},
+    {iso:208, iso2:"dk", name:"Denmark", continent:"Europe", capital:"Copenhagen", dish:"Frikadeller", facts:["It is consistently ranked among the happiest countries in the world.", "It consistently ranks among the world's most bicycle-friendly countries.", "A famous toy brick company was founded there."], lat:55.68, lon:12.57},
+    {iso:233, iso2:"ee", name:"Estonia", continent:"Europe", capital:"Tallinn", dish:"Mulgikapsad", facts:["It is one of the most digitally advanced countries, letting citizens vote online.", "It is a pioneer of e-government and online services.", "Much of it is covered by forest and wetlands."], lat:59.44, lon:24.75},
+    {iso:246, iso2:"fi", name:"Finland", continent:"Europe", capital:"Helsinki", dish:"Karjalanpiirakka", facts:["It has more saunas than cars.", "A famous mobile phone company got its start there.", "It shares a very long border with Russia."], lat:60.17, lon:24.94},
+    {iso:250, iso2:"fr", name:"France", continent:"Europe", capital:"Paris", dish:"Boeuf Bourguignon", facts:["It is the most visited country in the world by international tourists.", "A famous iron tower is one of its most visited landmarks.", "It has overseas territories scattered across multiple oceans."], lat:48.86, lon:2.35},
+    {iso:276, iso2:"de", name:"Germany", continent:"Europe", capital:"Berlin", dish:"Sauerbraten", facts:["It is home to the world's largest beer festival.", "Parts of its highway network famously have no overall speed limit.", "It reunified after decades of political division in 1990."], lat:52.52, lon:13.40},
+    {iso:300, iso2:"gr", name:"Greece", continent:"Europe", capital:"Athens", dish:"Moussaka", facts:["It is considered the birthplace of democracy.", "The modern Olympic Games were revived there in 1896.", "It has thousands of islands scattered across the Aegean and Ionian Seas."], lat:37.98, lon:23.73},
+    {iso:348, iso2:"hu", name:"Hungary", continent:"Europe", capital:"Budapest", dish:"Goulash", facts:["Its capital was originally two separate cities on either side of a river.", "Its capital is bisected by a major European river.", "It is famous for a spicy paprika-based stew."], lat:47.50, lon:19.04},
+    {iso:352, iso2:"is", name:"Iceland", continent:"Europe", capital:"Reykjavík", dish:"Plokkfiskur", facts:["It has no standing army and runs almost entirely on renewable energy.", "Geothermal energy powers much of the country.", "It sits atop the boundary of two tectonic plates."], lat:64.15, lon:-21.94},
+    {iso:372, iso2:"ie", name:"Ireland", continent:"Europe", capital:"Dublin", dish:"Irish Stew", facts:["Its patron saint is celebrated with parades around the world every March.", "It is nicknamed the 'Emerald Isle' for its green landscape.", "A famous stout beer originates from its capital."], lat:53.35, lon:-6.26},
+    {iso:380, iso2:"it", name:"Italy", continent:"Europe", capital:"Rome", dish:"Pizza Margherita", facts:["It is famously shaped like a boot on the map.", "It has more UNESCO World Heritage Sites than almost any other country.", "It gave birth to the Renaissance movement."], lat:41.90, lon:12.50},
+    {iso:428, iso2:"lv", name:"Latvia", continent:"Europe", capital:"Riga", dish:"Grey Peas with Bacon", facts:["Nearly half of it is covered by forest.", "Its capital's Art Nouveau architecture is internationally renowned.", "Amber has been traded from its coast for millennia."], lat:56.95, lon:24.11},
+    {iso:438, iso2:"li", name:"Liechtenstein", continent:"Europe", capital:"Vaduz", dish:"Käsknöpfle", facts:["It is one of only two countries in the world surrounded entirely by other landlocked countries.", "It is one of the smallest countries in the world by area.", "Banking and finance are central to its economy."], lat:47.14, lon:9.52},
+    {iso:440, iso2:"lt", name:"Lithuania", continent:"Europe", capital:"Vilnius", dish:"Cepelinai", facts:["It was the last country in Europe to convert to Christianity.", "It was once part of a vast medieval grand duchy.", "It has a Baltic Sea coastline known for amber."], lat:54.69, lon:25.28},
+    {iso:442, iso2:"lu", name:"Luxembourg", continent:"Europe", capital:"Luxembourg City", dish:"Judd mat Gaardebounen", facts:["It is one of the smallest countries in the world by area, wedged between three larger neighbors.", "It has one of the highest GDP per capita figures in the world.", "It is a founding member of the European Union."], lat:49.61, lon:6.13},
+    {iso:470, iso2:"mt", name:"Malta", continent:"Europe", capital:"Valletta", dish:"Rabbit Stew", facts:["Its capital is one of the smallest capital cities in Europe.", "It has some of the oldest freestanding structures in the world.", "English is one of its official languages."], lat:35.90, lon:14.51},
+    {iso:498, iso2:"md", name:"Moldova", continent:"Europe", capital:"Chișinău", dish:"Mămăligă", facts:["It is home to one of the world's largest wine cellars, with tunnels stretching for miles.", "Winemaking traditions there date back thousands of years.", "It is one of the poorest countries in Europe by income."], lat:47.01, lon:28.86},
+    {iso:492, iso2:"mc", name:"Monaco", continent:"Europe", capital:"Monaco", dish:"Barbagiuan", facts:["It is the second-smallest country in the world.", "It hosts a famous annual street circuit car race.", "It has no personal income tax for residents."], lat:43.74, lon:7.42},
+    {iso:499, iso2:"me", name:"Montenegro", continent:"Europe", capital:"Podgorica", dish:"Njeguški Steak", facts:["Its name literally translates to 'black mountain.'", "Its coastline along the Adriatic Sea attracts many tourists.", "It became independent from a state union in 2006."], lat:42.44, lon:19.26},
+    {iso:528, iso2:"nl", name:"Netherlands", continent:"Europe", capital:"Amsterdam", dish:"Stamppot", facts:["Roughly a quarter of it lies below sea level.", "It is famous for tulip fields and windmills.", "Its flood-control engineering is renowned worldwide."], lat:52.37, lon:4.90},
+    {iso:807, iso2:"mk", name:"North Macedonia", continent:"Europe", capital:"Skopje", dish:"Tavče Gravče", facts:["A famous ancient conqueror's namesake kingdom once covered this region.", "Its capital was heavily damaged by an earthquake in 1963.", "It changed its official name after a long dispute with a neighbor."], lat:42.00, lon:21.43},
+    {iso:578, iso2:"no", name:"Norway", continent:"Europe", capital:"Oslo", dish:"Fårikål", facts:["It is famous for its dramatic fjords carved by ancient glaciers.", "It is one of the world's largest exporters of oil and gas.", "Its citizens enjoy some of the world's highest living standards."], lat:59.91, lon:10.75},
+    {iso:616, iso2:"pl", name:"Poland", continent:"Europe", capital:"Warsaw", dish:"Pierogi", facts:["Its capital was almost entirely rebuilt after being destroyed in World War II.", "It was the site of the opening battles of World War II.", "It has a rich tradition of classical composers."], lat:52.23, lon:21.01},
+    {iso:620, iso2:"pt", name:"Portugal", continent:"Europe", capital:"Lisbon", dish:"Bacalhau à Brás", facts:["It is the oldest country in Europe with unchanged borders.", "It was once at the center of a vast global maritime empire.", "Cork production is a major part of its economy."], lat:38.72, lon:-9.14},
+    {iso:642, iso2:"ro", name:"Romania", continent:"Europe", capital:"Bucharest", dish:"Sarmale", facts:["A legendary vampire count was inspired by a real prince from this region.", "It is home to a dramatic mountain range associated with old legends.", "Its capital was once nicknamed 'Little Paris.'"], lat:44.43, lon:26.10},
+    {iso:643, iso2:"ru", name:"Russia", continent:"Europe", capital:"Moscow", dish:"Borscht", facts:["It spans eleven time zones, more than any other country.", "It is the largest country in the world by land area.", "It stretches across two continents."], lat:55.76, lon:37.62},
+    {iso:674, iso2:"sm", name:"San Marino", continent:"Europe", capital:"San Marino", dish:"Piada", facts:["It claims to be the oldest surviving republic in the world.", "It is entirely surrounded by a single neighboring country.", "It is one of the smallest countries in the world by population."], lat:43.94, lon:12.45},
+    {iso:688, iso2:"rs", name:"Serbia", continent:"Europe", capital:"Belgrade", dish:"Ćevapi", facts:["It is a landlocked country in the Balkans with a rich history as part of a former federation.", "It sits at a crossroads between Central and Southeastern Europe.", "Its capital lies at the meeting point of two major rivers."], lat:44.79, lon:20.45},
+    {iso:703, iso2:"sk", name:"Slovakia", continent:"Europe", capital:"Bratislava", dish:"Bryndzové Halušky", facts:["It has more castles per capita than almost any other country.", "It is famous for its density of medieval castles.", "It shares a long mountain range with a neighboring country."], lat:48.15, lon:17.11},
+    {iso:705, iso2:"si", name:"Slovenia", continent:"Europe", capital:"Ljubljana", dish:"Kranjska Klobasa", facts:["More than half of it is covered by forest.", "It has both alpine mountains and a small Adriatic coastline.", "Its capital is known for its green urban planning."], lat:46.06, lon:14.51},
+    {iso:724, iso2:"es", name:"Spain", continent:"Europe", capital:"Madrid", dish:"Paella", facts:["It is home to a famous running of the bulls festival each summer.", "It has one of the highest numbers of UNESCO World Heritage Sites.", "Flamenco music and dance originated in its southern regions."], lat:40.42, lon:-3.70},
+    {iso:752, iso2:"se", name:"Sweden", continent:"Europe", capital:"Stockholm", dish:"Köttbullar", facts:["It is home to the company that invented the flat-pack furniture store.", "It has one of the world's most generous parental leave systems.", "It gave the world a famous music streaming platform."], lat:59.33, lon:18.07},
+    {iso:756, iso2:"ch", name:"Switzerland", continent:"Europe", capital:"Bern", dish:"Cheese Fondue", facts:["It is famous for staying neutral in global conflicts for centuries.", "It is renowned for precision watchmaking.", "It hosts many international organizations despite staying outside certain unions."], lat:46.95, lon:7.45},
+    {iso:804, iso2:"ua", name:"Ukraine", continent:"Europe", capital:"Kyiv", dish:"Borscht", facts:["It is the largest country entirely within Europe.", "It is one of the world's largest producers of sunflower oil.", "It has been the site of major conflict in recent years."], lat:50.45, lon:30.52},
+    {iso:826, iso2:"gb", name:"United Kingdom", continent:"Europe", capital:"London", dish:"Fish and Chips", facts:["It is made up of four constituent nations.", "It was the birthplace of the Industrial Revolution.", "It has a constitutional monarchy as its system of government."], lat:51.51, lon:-0.13},
+
+    // ---------------- NORTH AMERICA (23) ----------------
+    {iso:28,  iso2:"ag", name:"Antigua and Barbuda", continent:"North America", capital:"Saint John's", dish:"Fungee and Pepperpot", facts:["Legend says it has a beach for every day of the year.", "Tourism is the backbone of its economy.", "It gained independence from Britain in 1981."], lat:17.12, lon:-61.85},
+    {iso:44,  iso2:"bs", name:"Bahamas", continent:"North America", capital:"Nassau", dish:"Conch Salad", facts:["It is made up of about 700 islands and islets.", "It was one of the first landfalls of Christopher Columbus in the Americas.", "Its waters are famous for their clear turquoise color."], lat:25.06, lon:-77.35},
+    {iso:52,  iso2:"bb", name:"Barbados", continent:"North America", capital:"Bridgetown", dish:"Cou-Cou and Flying Fish", facts:["It became one of the world's newest republics in 2021, removing a distant monarch as head of state.", "Rum production has deep historical roots there.", "It was a British colony for over 300 years."], lat:13.10, lon:-59.62},
+    {iso:84,  iso2:"bz", name:"Belize", continent:"North America", capital:"Belmopan", dish:"Rice and Beans", facts:["It is home to the second-largest barrier reef in the world.", "English is its official language, unique in its region.", "Ancient Maya ruins are scattered throughout its jungles."], lat:17.25, lon:-88.77},
+    {iso:124, iso2:"ca", name:"Canada", continent:"North America", capital:"Ottawa", dish:"Poutine", facts:["It has more lakes than the rest of the world combined.", "It has the longest coastline of any country in the world.", "Maple syrup production is closely associated with it."], lat:45.42, lon:-75.70},
+    {iso:188, iso2:"cr", name:"Costa Rica", continent:"North America", capital:"San José", dish:"Gallo Pinto", facts:["It abolished its military back in 1948.", "It generates most of its electricity from renewable sources.", "It is home to extraordinary biodiversity for its size."], lat:9.93, lon:-84.08},
+    {iso:192, iso2:"cu", name:"Cuba", continent:"North America", capital:"Havana", dish:"Ropa Vieja", facts:["Classic American cars from the 1950s still cruise its streets today.", "It underwent a major political revolution in 1959.", "Cigar and rum production are iconic parts of its culture."], lat:23.11, lon:-82.37},
+    {iso:212, iso2:"dm", name:"Dominica", continent:"North America", capital:"Roseau", dish:"Mountain Chicken", facts:["It is nicknamed the 'Nature Island' for its rainforests and hot springs.", "It is one of the most mountainous islands in the Caribbean.", "It has far fewer tourists than many neighboring islands."], lat:15.30, lon:-61.39},
+    {iso:214, iso2:"do", name:"Dominican Republic", continent:"North America", capital:"Santo Domingo", dish:"La Bandera", facts:["It shares its island with another sovereign nation.", "Baseball is enormously popular and has produced many international stars.", "Its capital was the first permanent European settlement in the Americas."], lat:18.49, lon:-69.93},
+    {iso:222, iso2:"sv", name:"El Salvador", continent:"North America", capital:"San Salvador", dish:"Pupusas", facts:["It is the smallest and most densely populated country in its region.", "It adopted a foreign currency as legal tender in the early 2000s.", "It is the most densely populated country in mainland Central America."], lat:13.69, lon:-89.22},
+    {iso:308, iso2:"gd", name:"Grenada", continent:"North America", capital:"St. George's", dish:"Oil Down", facts:["It is nicknamed the 'Island of Spice' for its nutmeg production.", "It was the site of a U.S. military intervention in 1983.", "Its economy has long depended on spice exports."], lat:12.06, lon:-61.75},
+    {iso:320, iso2:"gt", name:"Guatemala", continent:"North America", capital:"Guatemala City", dish:"Pepián", facts:["Ancient pyramid cities of the Maya civilization rise from its jungles.", "Coffee has long been a major part of its economy.", "It has the largest population in Central America."], lat:14.63, lon:-90.51},
+    {iso:332, iso2:"ht", name:"Haiti", continent:"North America", capital:"Port-au-Prince", dish:"Griot", facts:["It was the first country to gain independence through a successful slave revolt.", "It shares its island with another sovereign nation.", "It is among the poorest countries in the Western Hemisphere by income."], lat:18.59, lon:-72.31},
+    {iso:340, iso2:"hn", name:"Honduras", continent:"North America", capital:"Tegucigalpa", dish:"Baleada", facts:["According to legend, it is named after the 'deep waters' off its coast.", "Ancient Maya ruins can be found near its western border.", "Bananas have historically shaped much of its economy."], lat:14.07, lon:-87.19},
+    {iso:388, iso2:"jm", name:"Jamaica", continent:"North America", capital:"Kingston", dish:"Ackee and Saltfish", facts:["A famous music genre known for its offbeat rhythm was born on this Caribbean island.", "One of history's fastest sprinters hails from there.", "Its blue mountains are famous for growing coffee."], lat:17.97, lon:-76.79},
+    {iso:484, iso2:"mx", name:"Mexico", continent:"North America", capital:"Mexico City", dish:"Tacos al Pastor", facts:["It is home to more Spanish speakers than any other country in the world.", "Ancient pyramids built by earlier civilizations still stand there.", "Its capital is one of the largest cities in the world."], lat:19.43, lon:-99.13},
+    {iso:558, iso2:"ni", name:"Nicaragua", continent:"North America", capital:"Managua", dish:"Gallo Pinto", facts:["It is home to the only freshwater lake in the world known to have sharks.", "It is the largest country in Central America by area.", "Volcanoes dot much of its landscape."], lat:12.11, lon:-86.24},
+    {iso:591, iso2:"pa", name:"Panama", continent:"North America", capital:"Panama City", dish:"Sancocho", facts:["A famous canal connects two oceans through this country.", "It uses the U.S. dollar alongside its own currency.", "Its canal is one of the most important shipping routes in the world."], lat:8.98, lon:-79.52},
+    {iso:659, iso2:"kn", name:"Saint Kitts and Nevis", continent:"North America", capital:"Basseterre", dish:"Stewed Saltfish", facts:["It is the smallest sovereign country in the Americas by both area and population.", "Sugar cane once dominated its colonial-era economy.", "It consists of two small islands close together."], lat:17.30, lon:-62.72},
+    {iso:662, iso2:"lc", name:"Saint Lucia", continent:"North America", capital:"Castries", dish:"Green Fig and Saltfish", facts:["It is home to twin volcanic peaks that rise straight from the sea.", "It has produced two Nobel Prize winners, a rarity for its size.", "Tourism is central to its modern economy."], lat:14.01, lon:-60.99},
+    {iso:670, iso2:"vc", name:"Saint Vincent and the Grenadines", continent:"North America", capital:"Kingstown", dish:"Roasted Breadfruit and Fried Jackfish", facts:["Scenes from a famous pirate film franchise were shot among its islands.", "It is made up of dozens of small islands and islets.", "Bananas were historically a major export crop."], lat:13.16, lon:-61.22},
+    {iso:780, iso2:"tt", name:"Trinidad and Tobago", continent:"North America", capital:"Port of Spain", dish:"Doubles", facts:["Steel drum music was invented here.", "It hosts one of the most famous Carnival celebrations in the Caribbean.", "It is a major producer of oil and natural gas in the region."], lat:10.65, lon:-61.52},
+    {iso:840, iso2:"us", name:"United States", continent:"North America", capital:"Washington, D.C.", dish:"Hamburger", facts:["It is home to the world's third-largest population.", "It has the world's largest economy by nominal GDP.", "It stretches across six time zones including its territories."], lat:38.91, lon:-77.04},
+
+    // ---------------- SOUTH AMERICA (12) ----------------
+    {iso:32,  iso2:"ar", name:"Argentina", continent:"South America", capital:"Buenos Aires", dish:"Asado", facts:["A passionate music and dance style originated in its capital.", "It is home to some of the world's southernmost cities.", "Beef and cattle ranching are deeply tied to its culture."], lat:-34.60, lon:-58.38},
+    {iso:68,  iso2:"bo", name:"Bolivia", continent:"South America", capital:"Sucre", dish:"Salteñas", facts:["It is home to the world's largest salt flat.", "It has two official capital cities.", "It is one of only two landlocked countries in South America."], lat:-19.05, lon:-65.26},
+    {iso:76,  iso2:"br", name:"Brazil", continent:"South America", capital:"Brasília", dish:"Feijoada", facts:["It is the largest country in South America and home to most of the Amazon rainforest.", "It is the only Portuguese-speaking country in South America.", "It has hosted both the FIFA World Cup and the Summer Olympics."], lat:-15.79, lon:-47.88},
+    {iso:152, iso2:"cl", name:"Chile", continent:"South America", capital:"Santiago", dish:"Empanadas", facts:["It is one of the longest, narrowest countries in the world.", "It contains one of the driest deserts on Earth.", "It experiences some of the world's strongest earthquakes."], lat:-33.45, lon:-70.67},
+    {iso:170, iso2:"co", name:"Colombia", continent:"South America", capital:"Bogotá", dish:"Bandeja Paisa", facts:["It is the world's second most biodiverse country.", "It is one of the world's largest coffee producers.", "It has coastlines on both the Pacific and Caribbean."], lat:4.71, lon:-74.07},
+    {iso:218, iso2:"ec", name:"Ecuador", continent:"South America", capital:"Quito", dish:"Encebollado", facts:["It is named after the imaginary line that circles the middle of the globe.", "A famous group of islands studied by Darwin belongs to it.", "It uses the U.S. dollar as its official currency."], lat:-0.18, lon:-78.47},
+    {iso:328, iso2:"gy", name:"Guyana", continent:"South America", capital:"Georgetown", dish:"Pepperpot", facts:["Its name means 'land of many waters.'", "English is its official language, unusual for its region.", "Vast rainforest covers most of its territory."], lat:6.80, lon:-58.16},
+    {iso:600, iso2:"py", name:"Paraguay", continent:"South America", capital:"Asunción", dish:"Sopa Paraguaya", facts:["It is one of only two landlocked countries in South America.", "It has two official languages, one of them Indigenous.", "A massive hydroelectric dam it shares with a neighbor is among the world's largest."], lat:-25.28, lon:-57.63},
+    {iso:604, iso2:"pe", name:"Peru", continent:"South America", capital:"Lima", dish:"Ceviche", facts:["A famous lost Incan city sits high in its mountains.", "It was once the center of a vast Andean empire.", "It has coastline, mountains, and rainforest all within its borders."], lat:-12.05, lon:-77.04},
+    {iso:740, iso2:"sr", name:"Suriname", continent:"South America", capital:"Paramaribo", dish:"Pom", facts:["It is the smallest sovereign country in South America.", "It was formerly a Dutch colony.", "It has one of the highest percentages of forest cover in the world."], lat:5.87, lon:-55.17},
+    {iso:858, iso2:"uy", name:"Uruguay", continent:"South America", capital:"Montevideo", dish:"Asado", facts:["It was the first country to both host and win the FIFA World Cup.", "It was one of the earliest countries to legalize recreational cannabis.", "It has one of the highest standards of living in South America."], lat:-34.90, lon:-56.16},
+    {iso:862, iso2:"ve", name:"Venezuela", continent:"South America", capital:"Caracas", dish:"Pabellón Criollo", facts:["It is home to the world's tallest uninterrupted waterfall.", "It has some of the largest proven oil reserves in the world.", "It is home to a vast, remote table-top mountain region."], lat:10.49, lon:-66.88},
+
+    // ---------------- OCEANIA (14) ----------------
+    {iso:36,  iso2:"au", name:"Australia", continent:"Oceania", capital:"Canberra", dish:"Meat Pie", facts:["It is the only country that is also an entire continent.", "Most of its unique wildlife exists nowhere else on Earth.", "Its interior is dominated by a vast, sparsely populated outback."], lat:-35.28, lon:149.13},
+    {iso:242, iso2:"fj", name:"Fiji", continent:"Oceania", capital:"Suva", dish:"Kokoda", facts:["It is made up of more than 300 islands, about a third of them inhabited.", "Rugby is treated almost like a national religion there.", "Its economy relies heavily on tourism and sugar exports."], lat:-18.14, lon:178.44},
+    {iso:296, iso2:"ki", name:"Kiribati", continent:"Oceania", capital:"South Tarawa", dish:"Palusami", facts:["It is the only country in the world located in all four hemispheres.", "Rising sea levels pose an existential threat to it.", "It is spread across a vast area of the central Pacific."], lat:1.33, lon:172.98},
+    {iso:584, iso2:"mh", name:"Marshall Islands", continent:"Oceania", capital:"Majuro", dish:"Coconut Crab", facts:["It is made up of 29 coral atolls scattered across the Pacific.", "It was the site of nuclear weapons testing in the mid-20th century.", "It has close political and economic ties to the United States."], lat:7.12, lon:171.18},
+    {iso:583, iso2:"fm", name:"Micronesia", continent:"Oceania", capital:"Palikir", dish:"Breadfruit", facts:["It is a federation of over 600 islands in the western Pacific.", "Ancient stone ruins on one of its islands remain a mystery.", "It has close ties with the United States through a special agreement."], lat:6.92, lon:158.16},
+    {iso:520, iso2:"nr", name:"Nauru", continent:"Oceania", capital:"Yaren", dish:"Coconut Fish", facts:["It is the smallest island nation in the world.", "Phosphate mining once made it one of the richest nations per capita.", "It has no official capital city."], lat:-0.55, lon:166.92},
+    {iso:554, iso2:"nz", name:"New Zealand", continent:"Oceania", capital:"Wellington", dish:"Pavlova", facts:["It is home to more sheep than people.", "It was one of the first countries to grant women the right to vote.", "Its Indigenous Maori culture remains a vibrant part of national identity."], lat:-41.29, lon:174.78},
+    {iso:585, iso2:"pw", name:"Palau", continent:"Oceania", capital:"Ngerulmud", dish:"Fruit Bat Soup", facts:["Its 'Jellyfish Lake' is home to millions of stingless jellyfish.", "It was one of the first nations to ban reef-toxic sunscreens.", "It has well-preserved World War II history in its waters."], lat:7.50, lon:134.62},
+    {iso:598, iso2:"pg", name:"Papua New Guinea", continent:"Oceania", capital:"Port Moresby", dish:"Mumu", facts:["It is one of the most linguistically diverse countries, with over 800 languages spoken.", "It shares an island with a much larger neighboring country.", "Traditional tribal customs remain strong across many regions."], lat:-9.48, lon:147.15},
+    {iso:882, iso2:"ws", name:"Samoa", continent:"Oceania", capital:"Apia", dish:"Palusami", facts:["It was one of the last places on Earth to see the sunset before a calendar line change.", "Rugby is a major national sport and pastime.", "It shifted its time zone across the international date line in 2011."], lat:-13.83, lon:-171.76},
+    {iso:90,  iso2:"sb", name:"Solomon Islands", continent:"Oceania", capital:"Honiara", dish:"Poi", facts:["It is made up of nearly a thousand islands in the South Pacific.", "It was the site of major battles during World War II.", "It consists of hundreds of islands in the South Pacific."], lat:-9.43, lon:159.95},
+    {iso:776, iso2:"to", name:"Tonga", continent:"Oceania", capital:"Nuku'alofa", dish:"Lu Pulu", facts:["It is the only Pacific island nation to have never been fully colonized.", "It is governed as a kingdom with a royal family.", "A massive undersea volcanic eruption made global headlines in 2022."], lat:-21.14, lon:-175.20},
+    {iso:798, iso2:"tv", name:"Tuvalu", continent:"Oceania", capital:"Funafuti", dish:"Palusami", facts:["It is one of the smallest and lowest-lying countries in the world.", "It is one of the least visited countries in the world.", "Rising sea levels threaten its very existence."], lat:-8.52, lon:179.20},
+    {iso:548, iso2:"vu", name:"Vanuatu", continent:"Oceania", capital:"Port Vila", dish:"Lap Lap", facts:["It is home to some of the most active volcanoes in the Pacific.", "Bungee jumping is believed to have originated from a local land-diving ritual.", "It is made up of more than 80 islands."], lat:-17.73, lon:168.32},
+
+    // ---------------- OTHER SOVEREIGN STATES (3) ----------------
+    {iso:336, iso2:"va", name:"Vatican City", continent:"Europe", capital:"Vatican City", dish:"Saltimbocca", facts:["It is the smallest sovereign state in the world by both area and population.", "It has its own postal service and issues its own stamps.", "It is home to one of the largest churches in the world."], lat:41.90, lon:12.45},
+    {iso:275, iso2:"ps", name:"Palestine", continent:"Asia", capital:"Ramallah", dish:"Musakhan", facts:["It is recognized as a state by a majority of United Nations members but not all.", "It contains cities considered holy by multiple world religions.", "Olive trees are an important part of its agricultural heritage."], lat:31.90, lon:35.20},
+    {iso:158, iso2:"tw", name:"Taiwan", continent:"Asia", capital:"Taipei", dish:"Beef Noodle Soup", facts:["It is home to one of the tallest buildings to have ever held the title of world's tallest.", "It is a global leader in semiconductor manufacturing.", "Its mountainous interior contrasts with a densely populated coastline."], lat:25.03, lon:121.56},
+  ];
+
+  const TOTAL = COUNTRIES.length;
+  document.getElementById("score-value").textContent = "0 / " + TOTAL;
+
+  const byIso = new Map(COUNTRIES.map(c => [c.iso, c]));
+
+  /* ============ LAND BORDER ADJACENCY (for accurate "bordering" heat-map tier) ============
+     Keyed by ISO numeric code; values are ISO numeric codes of countries (from our
+     196-country list) that share a land border. Island nations and other countries
+     with no land neighbors in our list simply have an empty array.
+  */
+  const BORDERS = {
+    12:[504,788,434,562,466,478], 24:[516,894,180,178], 204:[768,854,562,566], 72:[516,894,716,710],
+    854:[466,562,204,768,288,384], 108:[646,834,180], 132:[], 120:[566,148,140,178,266,226],
+    140:[148,729,728,180,178,120], 148:[434,729,140,120,566,562], 174:[], 178:[266,120,140,180,24],
+    180:[178,140,728,800,646,108,834,894,24], 262:[232,231,706], 818:[434,729,376,275],
+    226:[120,266], 232:[729,231,262], 748:[710,508], 231:[232,262,706,404,728,729],
+    266:[226,120,178], 270:[686], 288:[384,854,768], 324:[624,686,466,384,430,694],
+    624:[686,324], 384:[430,324,466,854,288], 404:[231,706,834,800,728], 426:[710],
+    430:[694,324,384], 434:[788,12,562,148,729,818], 450:[], 454:[834,508,894],
+    466:[12,562,854,384,324,686,478], 478:[12,466,686], 480:[], 504:[12], 508:[834,454,894,716,710,748],
+    516:[24,894,72,710], 562:[12,434,148,566,204,854,466], 566:[204,562,148,120], 646:[800,834,108,180],
+    678:[], 686:[478,466,324,624,270], 690:[], 694:[324,430], 706:[262,231,404],
+    710:[516,72,716,508,748,426], 728:[729,231,404,800,180,140], 729:[818,434,148,140,728,231,232],
+    834:[404,800,646,108,180,894,454,508], 768:[288,854,204], 788:[12,434], 800:[404,728,180,646,834],
+    894:[180,834,454,508,716,72,516,24], 716:[894,508,710,72],
+
+    4:[364,795,860,762,586,156], 51:[268,31,364,792], 31:[643,268,51,364,792], 48:[],
+    50:[356,104], 64:[156,356], 96:[458], 116:[764,418,704], 156:[4,64,356,398,417,418,496,104,524,408,586,643,762,704],
+    268:[643,792,51,31], 356:[586,156,524,64,50,104], 360:[458,598,626], 364:[368,792,51,31,795,4,586],
+    368:[364,792,760,400,682,414], 376:[818,400,422,760,275], 392:[], 400:[376,275,760,368,682],
+    398:[643,156,417,860,795], 414:[368,682], 417:[398,156,762,860], 418:[156,704,116,764,104],
+    422:[760,376], 458:[764,360,96], 462:[], 496:[643,156], 104:[156,356,50,764,418], 524:[156,356],
+    408:[156,643,410], 512:[682,784,887], 586:[356,156,4,364], 608:[], 634:[682],
+    682:[400,368,414,634,784,512,887], 702:[], 410:[408], 144:[], 760:[792,368,400,376,422],
+    762:[4,156,417,860], 764:[104,418,116,458], 626:[360], 792:[300,100,268,51,364,368,760],
+    795:[398,860,4,364], 784:[682,512], 860:[398,417,762,795,4], 704:[156,418,116], 887:[682,512],
+
+    8:[499,807,300], 20:[250,724], 40:[276,203,703,348,705,380,756,438], 112:[643,804,616,440,428],
+    56:[250,528,276,442], 70:[191,688,499], 100:[642,688,807,300,792], 191:[705,348,688,70,499],
+    196:[], 203:[276,616,703,40], 208:[276], 233:[643,428], 246:[752,578,643],
+    250:[56,442,276,756,380,492,724,20], 276:[208,616,203,40,756,250,442,56,528], 300:[8,807,100,792],
+    348:[40,703,804,642,688,191,705], 352:[], 372:[826], 380:[250,756,40,705,674,336],
+    428:[233,643,112,440], 438:[756,40], 440:[428,112,616,643], 442:[56,250,276], 470:[],
+    498:[642,804], 492:[250], 499:[191,70,688,8], 528:[276,56], 807:[688,100,300,8],
+    578:[752,246,643], 616:[276,203,703,804,112,440,643], 620:[724], 642:[348,804,498,100,688],
+    643:[578,246,233,428,440,616,112,804,268,31,398,156,496,408], 674:[380], 688:[348,642,100,807,499,70,191],
+    703:[203,616,804,348,40], 705:[380,40,348,191], 724:[250,20,620], 752:[578,246], 756:[250,276,40,438,380],
+    804:[643,112,616,703,348,642,498], 826:[372],
+
+    28:[], 44:[], 52:[], 84:[484,320], 124:[840], 188:[558,591], 192:[], 212:[], 214:[332],
+    222:[320,340], 308:[], 320:[484,84,340,222], 332:[214], 340:[320,222,558], 388:[],
+    484:[840,320,84], 558:[340,188], 591:[188,170], 659:[], 662:[], 670:[], 780:[], 840:[124,484],
+
+    32:[152,68,600,76,858], 68:[604,76,600,32,152], 76:[858,32,600,68,604,170,862,328,740],
+    152:[604,68,32], 170:[591,862,76,604,218], 218:[170,604], 328:[862,76,740], 600:[68,76,32],
+    604:[218,170,76,68,152], 740:[328,76], 858:[76,32], 862:[170,76,328],
+
+    36:[], 242:[], 296:[], 584:[], 583:[], 520:[], 554:[], 585:[], 598:[360], 882:[], 90:[], 776:[], 798:[], 548:[],
+
+    336:[380], 275:[376,818,400], 158:[]
+  };
+
+  /* ============ NON-COUNTRY MAP TERRITORIES ============
+     Some map regions a person might tap (dependencies, disputed areas)
+     aren't one of the 196 countries in the game. Rather than showing a
+     blank name, we label these as "Parent (Territory)" or similar so the
+     confirmation prompt and feedback always make sense.
+  */
+  const TERRITORIES = {
+    304:"Denmark (Greenland)", 732:"Western Sahara (disputed territory)",
+    254:"France (French Guiana)", 474:"France (Martinique)", 312:"France (Guadeloupe)",
+    638:"France (Réunion)", 175:"France (Mayotte)", 540:"France (New Caledonia)", 258:"France (French Polynesia)",
+    630:"United States (Puerto Rico)", 850:"United States (U.S. Virgin Islands)", 316:"United States (Guam)", 16:"United States (American Samoa)",
+    60:"United Kingdom (Bermuda)", 136:"United Kingdom (Cayman Islands)", 92:"United Kingdom (British Virgin Islands)",
+    238:"United Kingdom (Falkland Islands)", 292:"United Kingdom (Gibraltar)", 796:"United Kingdom (Turks and Caicos Islands)",
+    660:"United Kingdom (Anguilla)", 500:"United Kingdom (Montserrat)",
+    533:"Netherlands (Aruba)", 531:"Netherlands (Curaçao)", 534:"Netherlands (Sint Maarten)",
+    344:"China (Hong Kong)", 446:"China (Macau)", 234:"Denmark (Faroe Islands)",
+    184:"New Zealand (Cook Islands)", 570:"New Zealand (Niue)", 772:"New Zealand (Tokelau)",
+    10:"Antarctica (no sovereign country)"
+  };
+
+  function isBordering(targetIso, clickedIso){
+    const neighbors = BORDERS[targetIso];
+    return !!neighbors && neighbors.includes(clickedIso);
+  }
+
+  /* ============ EMOJI FLAG HELPER ============ */
+  function emojiFlag(iso2){
+    const codePoints = iso2.toUpperCase().split("").map(ch => 0x1F1E6 + (ch.charCodeAt(0) - 65));
+    return String.fromCodePoint.apply(null, codePoints);
+  }
+
+  /* ============ DISTANCE HEAT-MAP HELPER ============ */
+  function haversineKm(lat1, lon1, lat2, lon2){
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+              Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  // "Bordering" is now decided by the real BORDERS table above, so these
+  // distance tiers only need to cover the non-bordering cases.
+  function classifyDistance(km){
+    if (km < 2000) return {cls:"tier-veryclose", label:"Very close (under 2,000 km away)."};
+    if (km < 5000) return {cls:"tier-moderate",  label:"Moderate distance (2,000–5,000 km away)."};
+    if (km < 9000) return {cls:"tier-far",       label:"Far away (5,000–9,000 km)."};
+    return {cls:"tier-veryfar", label:"Very far away (over 9,000 km)."};
+  }
+
+  /* ============ STATE ============ */
+  let deck = [];
+  let target = null;
+  let attempt = 1;
+  let streak = 0;
+  let roundActive = false;
+  let spinning = false;
+
+  const flagDisplay = document.getElementById("flag-display");
+  const spinLabel = document.getElementById("spin-label");
+  const instructions = document.getElementById("instructions");
+  const hintBox = document.getElementById("hint-box");
+  const proximityTag = document.getElementById("proximity-tag");
+  const mainBtn = document.getElementById("main-btn");
+  const attemptDots = Array.from(document.querySelectorAll(".attempt-dot"));
+  const mapStatus = document.getElementById("map-status");
+  const scoreValue = document.getElementById("score-value");
+  const startOverlay = document.getElementById("start-overlay");
+  const endOverlay = document.getElementById("end-overlay");
+  const playerNameInput = document.getElementById("player-name-input");
+  let playerName = "Anonymous";
+
+  /* ============ LEADERBOARD (saved locally in this browser) ============ */
+  const LEADERBOARD_KEY = "louisesflaggame_leaderboard_v1";
+
+  function loadLeaderboard(){
+    try {
+      const raw = localStorage.getItem(LEADERBOARD_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveScoreToLeaderboard(name, score){
+    const list = loadLeaderboard();
+    const entry = { name: name || "Anonymous", score: score, ts: Date.now() };
+    list.push(entry);
+    list.sort((a, b) => b.score - a.score);
+    const top10 = list.slice(0, 10);
+    try { localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(top10)); } catch (e) { /* ignore */ }
+    return { top10, entry };
+  }
+
+  function renderLeaderboard(top10, justAddedEntry){
+    const listEl = document.getElementById("leaderboard-list");
+    listEl.innerHTML = "";
+    if (top10.length === 0){
+      listEl.innerHTML = "<li>No scores yet — be the first!</li>";
+      return;
+    }
+    top10.forEach((entry) => {
+      const li = document.createElement("li");
+      li.textContent = entry.name + " — " + entry.score;
+      if (justAddedEntry && entry.ts === justAddedEntry.ts && entry.name === justAddedEntry.name && entry.score === justAddedEntry.score){
+        li.classList.add("you-row");
+      }
+      listEl.appendChild(li);
+    });
+  }
+
+
+  /* ============ TAP-TO-GUESS CONFIRMATION ============ */
+  const confirmPopup = document.getElementById("confirm-popup");
+  const confirmText = document.getElementById("confirm-text");
+  const confirmYesBtn = document.getElementById("confirm-yes");
+  const confirmNoBtn = document.getElementById("confirm-no");
+  let pendingGuessIso = null;
+
+  function requestGuessConfirmation(iso){
+    if (!roundActive || spinning) return;
+    clearPendingHighlight();
+    pendingGuessIso = iso;
+    highlightIso(iso, "tier-pending");
+    const info = byIso.get(iso);
+    const territoryLabel = TERRITORIES[iso];
+    const displayName = info ? info.name : territoryLabel;
+    confirmText.innerHTML = displayName
+      ? "Are you sure you want to lock in <strong>" + displayName + "</strong>?"
+      : "Are you sure you want to lock in this location?";
+    confirmPopup.classList.remove("hidden");
+  }
+
+  function clearPendingHighlight(){
+    if (pendingGuessIso === null) return;
+    if (pathsSel) pathsSel.filter(d => +d.id === pendingGuessIso).classed("tier-pending", false);
+    if (markerGroups) markerGroups.filter(c => c.iso === pendingGuessIso).select(".marker-dot").classed("tier-pending", false);
+  }
+
+  function hideConfirmPopup(){
+    clearPendingHighlight();
+    confirmPopup.classList.add("hidden");
+    pendingGuessIso = null;
+  }
+
+  confirmYesBtn.addEventListener("click", () => {
+    const iso = pendingGuessIso;
+    hideConfirmPopup();
+    if (iso !== null) handleMapClick(iso);
+  });
+  confirmNoBtn.addEventListener("click", () => { hideConfirmPopup(); });
+
+  function shuffled(arr){
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function refillDeckIfNeeded(){
+    if (deck.length === 0) deck = shuffled(COUNTRIES);
+  }
+
+  function resetAttemptDots(){
+    attemptDots.forEach(d => d.className = "attempt-dot");
+    if (attemptDots[0]) attemptDots[0].classList.add("current");
+  }
+
+  /* ============ MAP SETUP (draggable + zoomable) ============ */
+  const svg = d3.select("#map-svg");
+  const mapWrapEl = document.querySelector(".map-wrap");
+  const zoomLayer = svg.append("g").attr("id", "zoom-layer");
+  let pathsSel = null;
+  let markerGroups = null;
+  let projection = d3.geoNaturalEarth1();
+  let pathGen = d3.geoPath(projection);
+  let geoData = null;
+  let mapW = 960, mapH = 500;
+
+  function measureMapWrap(){
+    const rect = mapWrapEl.getBoundingClientRect();
+    return {
+      w: Math.max(280, Math.round(rect.width)),
+      h: Math.max(280, Math.round(rect.height))
+    };
+  }
+
+  const zoomBehavior = d3.zoom()
+    .scaleExtent([1, 250])
+    .on("zoom", (event) => {
+      zoomLayer.attr("transform", event.transform);
+      if (markerGroups) {
+        const k = event.transform.k;
+        markerGroups.select("circle:nth-child(1)").attr("r", 16 / k);
+        markerGroups.select(".marker-dot").attr("r", 5 / k);
+      }
+    });
+
+  svg.call(zoomBehavior);
+  zoomBehavior.on("start", () => { hideConfirmPopup(); });
+
+  document.getElementById("zoom-in").addEventListener("click", () => {
+    svg.transition().duration(250).call(zoomBehavior.scaleBy, 1.6);
+  });
+  document.getElementById("zoom-out").addEventListener("click", () => {
+    svg.transition().duration(250).call(zoomBehavior.scaleBy, 0.625);
+  });
+  document.getElementById("zoom-reset").addEventListener("click", () => {
+    svg.transition().duration(300).call(zoomBehavior.transform, d3.zoomIdentity);
+  });
+
+  function updateTranslateExtent(){
+    zoomBehavior.translateExtent([[-mapW * 2, -mapH * 2], [mapW * 3, mapH * 3]]);
+  }
+
+  function buildMap(){
+    const size = measureMapWrap();
+    mapW = size.w; mapH = size.h;
+    svg.attr("viewBox", "0 0 " + mapW + " " + mapH);
+    projection.fitSize([mapW, mapH], geoData);
+    pathGen = d3.geoPath(projection);
+
+    pathsSel = zoomLayer.selectAll("path.country")
+      .data(geoData.features)
+      .enter()
+      .append("path")
+      .attr("class", "country")
+      .attr("d", pathGen)
+      .attr("data-iso", d => +d.id)
+      .on("click", function(event, d){ requestGuessConfirmation(+d.id); });
+
+    // A handful of very small nations aren't present as polygons at this
+    // map resolution. Give each of those a small clickable gold marker
+    // at its capital's coordinates so all 196 countries stay guessable.
+    const presentIso = new Set(geoData.features.map(f => +f.id));
+    const missing = COUNTRIES.filter(c => !presentIso.has(c.iso));
+
+    markerGroups = zoomLayer.selectAll("g.marker")
+      .data(missing)
+      .enter()
+      .append("g")
+      .attr("class", "marker")
+      .attr("transform", c => {
+        const p = projection([c.lon, c.lat]);
+        return p ? "translate(" + p[0] + "," + p[1] + ")" : "translate(-100,-100)";
+      })
+      .on("click", function(event, c){ requestGuessConfirmation(c.iso); });
+
+    markerGroups.append("circle").attr("r", 16).attr("fill", "#000").attr("fill-opacity", 0.01);
+    markerGroups.append("circle").attr("class", "marker-dot").attr("r", 5);
+
+    updateTranslateExtent();
+    mapStatus.textContent = "Drag to pan · pinch/scroll to zoom · tap + confirm to guess";
+    mapStatus.classList.add("show");
+  }
+
+  function refitMap(){
+    if (!geoData) return;
+    const size = measureMapWrap();
+    if (size.w === mapW && size.h === mapH) return;
+    mapW = size.w; mapH = size.h;
+    svg.attr("viewBox", "0 0 " + mapW + " " + mapH);
+    projection.fitSize([mapW, mapH], geoData);
+    pathGen = d3.geoPath(projection);
+    if (pathsSel) pathsSel.attr("d", pathGen);
+    if (markerGroups) {
+      markerGroups.attr("transform", c => {
+        const p = projection([c.lon, c.lat]);
+        return p ? "translate(" + p[0] + "," + p[1] + ")" : "translate(-100,-100)";
+      });
+    }
+    updateTranslateExtent();
+    svg.call(zoomBehavior.transform, d3.zoomIdentity);
+  }
+
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(refitMap, 200);
+  });
+  window.addEventListener("orientationchange", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(refitMap, 300);
+  });
+
+  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json").then(world => {
+    geoData = topojson.feature(world, world.objects.countries);
+    buildMap();
+  }).catch(err => {
+    mapStatus.textContent = "Map failed to load — check your internet connection.";
+    mapStatus.classList.add("show");
+    console.error(err);
+  });
+
+  function clearMapHighlights(){
+    const tierClasses = ["guess-correct","tier-border","tier-veryclose","tier-moderate","tier-far","tier-veryfar","tier-unknown","tier-pending"];
+    if (pathsSel) tierClasses.forEach(c => pathsSel.classed(c, false));
+    if (markerGroups) tierClasses.forEach(c => markerGroups.selectAll(".marker-dot").classed(c, false));
+  }
+
+  function highlightIso(iso, className){
+    if (pathsSel) pathsSel.filter(d => +d.id === iso).classed(className, true);
+    if (markerGroups) markerGroups.filter(c => c.iso === iso).select(".marker-dot").classed(className, true);
+  }
+
+  /* ============ GAME FLOW ============ */
+  function startGame(){
+    const typedName = (playerNameInput.value || "").trim();
+    playerName = typedName.length > 0 ? typedName.slice(0, 20) : "Anonymous";
+    streak = 0;
+    deck = shuffled(COUNTRIES);
+    scoreValue.textContent = "0 / " + TOTAL;
+    startOverlay.classList.add("hidden");
+    endOverlay.classList.add("hidden");
+    mainBtn.onclick = spinButtonHandler;
+    mainBtn.textContent = "Spin the Globe";
+    prepareNextRound();
+  }
+
+  function prepareNextRound(){
+    clearMapHighlights();
+    hideConfirmPopup();
+    refillDeckIfNeeded();
+    target = deck.pop();
+    target._chosenFact = target.facts[Math.floor(Math.random() * target.facts.length)];
+    attempt = 1;
+    roundActive = false;
+    hintBox.classList.remove("show");
+    hintBox.textContent = "";
+    proximityTag.classList.remove("show");
+    proximityTag.className = "proximity-tag";
+    resetAttemptDots();
+    flagDisplay.textContent = "🌐";
+    instructions.textContent = "Ready for the next flag.";
+    mainBtn.disabled = false;
+  }
+
+  function spinButtonHandler(){ spinToTarget(); }
+
+  function spinToTarget(){
+    if (spinning) return;
+    spinning = true;
+    mainBtn.disabled = true;
+    spinLabel.classList.add("show");
+    instructions.textContent = "The globe is spinning…";
+
+    const pool = shuffled(COUNTRIES).slice(0, 14);
+    let i = 0;
+    const totalTicks = 16;
+    const timer = setInterval(() => {
+      const c = pool[i % pool.length];
+      flagDisplay.textContent = emojiFlag(c.iso2);
+      i++;
+      if (i >= totalTicks){
+        clearInterval(timer);
+        finishSpin();
+      }
+    }, 90);
+  }
+
+  function finishSpin(){
+    flagDisplay.textContent = emojiFlag(target.iso2);
+    spinLabel.classList.remove("show");
+    spinning = false;
+    roundActive = true;
+    instructions.textContent = "Tap the country on the map that this flag belongs to. Attempt 1 of 3.";
+    mainBtn.disabled = true;
+  }
+
+  function handleMapClick(clickedIso){
+    if (!roundActive || spinning) return;
+
+    const isCorrect = clickedIso === target.iso;
+
+    if (isCorrect){
+      highlightIso(clickedIso, "guess-correct");
+      roundActive = false;
+      streak += 1;
+      scoreValue.textContent = streak + " / " + TOTAL;
+      instructions.innerHTML =
+        "🎉 Correct! That's <strong>" + target.name + "</strong>.<br>" +
+        "<strong>Fact:</strong> " + target._chosenFact + "<br>" +
+        "<strong>National dish:</strong> " + target.dish;
+      hintBox.classList.remove("show");
+      proximityTag.classList.remove("show");
+      attemptDots[attempt - 1].classList.remove("current");
+      attemptDots[attempt - 1].classList.add("used-correct");
+      mainBtn.disabled = false;
+      mainBtn.textContent = "Next Flag";
+      mainBtn.onclick = advanceToNextFlag;
+
+      if (deck.length === 0){
+        setTimeout(() => { showEndOverlay(true); }, 600);
+      }
+      return;
+    }
+
+    // wrong guess — apply heat-map coloring: real border adjacency first,
+    // then straight-line distance tiers as a fallback
+    const clickedCountry = byIso.get(clickedIso);
+    attemptDots[attempt - 1].classList.remove("current");
+    attemptDots[attempt - 1].classList.add("used-wrong");
+
+    if (clickedCountry){
+      if (isBordering(target.iso, clickedIso)){
+        highlightIso(clickedIso, "tier-border");
+        proximityTag.textContent = "📍 Right next door — you're basically neighbors!";
+        proximityTag.className = "proximity-tag show tier-border";
+      } else {
+        const km = haversineKm(clickedCountry.lat, clickedCountry.lon, target.lat, target.lon);
+        const tier = classifyDistance(km);
+        highlightIso(clickedIso, tier.cls);
+        proximityTag.textContent = "📍 " + Math.round(km).toLocaleString() + " km away — " + tier.label;
+        proximityTag.className = "proximity-tag show " + tier.cls;
+      }
+    } else {
+      const territoryLabel = TERRITORIES[clickedIso];
+      highlightIso(clickedIso, "tier-unknown");
+      proximityTag.textContent = territoryLabel
+        ? territoryLabel + " isn't one of the 196 countries in this game."
+        : "That's not one of the 196 countries in this game.";
+      proximityTag.className = "proximity-tag show tier-unknown";
+    }
+
+    if (attempt === 1){
+      attempt = 2;
+      hintBox.classList.add("show");
+      hintBox.innerHTML = "<strong>Hint:</strong> This country is in " + target.continent + ".<br><strong>Fun fact:</strong> " + target._chosenFact;
+      instructions.textContent = "Not quite — try again. Attempt 2 of 3.";
+      if (attemptDots[1]) attemptDots[1].classList.add("current");
+    } else if (attempt === 2){
+      attempt = 3;
+      hintBox.classList.add("show");
+      hintBox.innerHTML = "<strong>Capital:</strong> " + target.capital + "<br><strong>National dish:</strong> " + target.dish;
+      instructions.textContent = "One more try. Attempt 3 of 3.";
+      if (attemptDots[2]) attemptDots[2].classList.add("current");
+    } else {
+      // used up 3rd attempt — game over
+      roundActive = false;
+      highlightIso(target.iso, "guess-correct");
+      instructions.innerHTML = "That was your last attempt. The flag belonged to <strong>" + target.name + "</strong>.";
+      setTimeout(() => showEndOverlay(false), 900);
+    }
+  }
+
+  // After a correct guess, "Next Flag" immediately prepares and spins the
+  // following round in one step, so the streak keeps building without an
+  // extra "reset-feeling" button press.
+  function advanceToNextFlag(){
+    mainBtn.onclick = spinButtonHandler;
+    prepareNextRound();
+    spinToTarget();
+  }
+
+  mainBtn.onclick = spinButtonHandler;
+
+  function showEndOverlay(won){
+    document.getElementById("final-score").textContent = streak + " / " + TOTAL;
+    const lostBlock = document.getElementById("lost-flag-block");
+    const heading = endOverlay.querySelector("h2");
+    const para = document.getElementById("end-para");
+
+    if (won){
+      heading.textContent = "Every Flag, Correct!";
+      para.textContent = "You identified every single flag in the game. Amazing streak of";
+      lostBlock.innerHTML =
+        '<div class="lost-emoji">' + emojiFlag(target.iso2) + '</div>' +
+        '<div class="lost-name"><strong>' + target.name + '</strong>Capital: ' + target.capital +
+        '<br>National dish: ' + target.dish + '<br>Fact: ' + target._chosenFact + '</div>';
+    } else {
+      heading.textContent = "Game Over";
+      para.textContent = "You correctly identified";
+      lostBlock.innerHTML =
+        '<div class="lost-emoji">' + emojiFlag(target.iso2) + '</div>' +
+        '<div class="lost-name"><strong>' + target.name + '</strong>Capital: ' + target.capital +
+        '<br>National dish: ' + target.dish + '<br>Fact: ' + target._chosenFact + '</div>';
+    }
+
+    const { top10, entry } = saveScoreToLeaderboard(playerName, streak);
+    renderLeaderboard(top10, entry);
+
+    endOverlay.classList.remove("hidden");
+  }
+
+  document.getElementById("start-btn").addEventListener("click", startGame);
+  document.getElementById("restart-btn").addEventListener("click", startGame);
+
+})();
+</script>
+</body>
+</html>
