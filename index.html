@@ -37,6 +37,7 @@
     color: var(--cream);
     font-family: "Work Sans", sans-serif;
     overflow-x: hidden;
+    overscroll-behavior-y: contain;
   }
 
   #app {
@@ -190,28 +191,41 @@
   button:disabled { opacity: 0.45; cursor: default; transform: none; }
 
   .legend {
-    margin-top: 14px;
-    border-top: 1px solid rgba(0,0,0,0.15);
-    padding-top: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(0,0,0,0.15);
+    padding-bottom: 10px;
     font-size: 11px;
   }
-  .legend-title { font-weight: 600; margin-bottom: 6px; letter-spacing: 0.3px; }
+  .legend-title {
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .legend-title::-webkit-details-marker { display: none; }
+  .legend-title::after { content: "▾"; font-size: 10px; color: var(--brass-bright); transition: transform 0.15s ease; }
+  .legend[open] .legend-title::after { transform: rotate(180deg); }
+  .legend .legend-row:first-of-type { margin-top: 8px; }
   .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 
   /* ---------- MAP ---------- */
   .map-wrap {
-    flex: 1;
+    flex: 0 0 auto;
     background: var(--ocean);
     border-radius: 14px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.35);
     border: 1px solid rgba(201,162,39,0.35);
     overflow: hidden;
     position: relative;
-    min-height: 480px;
+    width: 100%;
+    aspect-ratio: 1.92 / 1;
   }
   @media (min-width: 860px) {
-    .map-wrap { min-height: 640px; align-self: stretch; }
+    .map-wrap { flex: 1; aspect-ratio: auto; min-height: 640px; align-self: stretch; }
   }
   @media (min-width: 1200px) {
     .map-wrap { min-height: 760px; }
@@ -264,6 +278,34 @@
     font-size: 10px; color: var(--parchment-dim); text-align: center;
   }
 
+  .scale-bar {
+    position: absolute;
+    bottom: 30px;
+    right: 12px;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    pointer-events: none;
+  }
+  .scale-bar-line {
+    height: 4px;
+    background: var(--cream);
+    border-left: 2px solid var(--cream);
+    border-right: 2px solid var(--cream);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+    width: 60px;
+    transition: width 0.15s ease;
+  }
+  .scale-bar-label {
+    margin-top: 3px;
+    font-size: 10px;
+    color: var(--cream);
+    background: rgba(10,30,44,0.75);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
   .confirm-popup {
     position: absolute;
     left: 50%;
@@ -300,6 +342,38 @@
     box-shadow: 0 12px 30px rgba(0,0,0,0.5); border: 3px solid var(--brass);
   }
   .overlay-card h2 { font-family: "Fraunces", serif; font-weight: 600; font-size: 24px; margin: 0 0 8px; }
+
+  .win-banner {
+    margin: -6px -6px 16px;
+    padding: 16px 10px 10px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #ffd700, #ff6fae, #ffd700);
+    background-size: 200% auto;
+    animation: shine 3s linear infinite;
+    text-align: center;
+  }
+  .win-banner.hidden { display: none; }
+  .win-banner .banner-text {
+    font-family: "Fraunces", serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: #1b1b1b;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .win-banner .puppy-emoji {
+    font-size: 64px;
+    line-height: 1;
+    margin-top: 4px;
+    animation: bounce 0.9s ease-in-out infinite;
+  }
+  @keyframes shine {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-14px) scale(1.05); }
+  }
   .overlay-card p { font-size: 14px; line-height: 1.5; margin: 8px 0 18px; }
   .overlay-card .big-score { font-family: "Fraunces", serif; font-size: 42px; font-weight: 700; color: var(--correct); margin: 6px 0; }
 
@@ -351,6 +425,17 @@
 
   <main>
     <div class="panel">
+      <details class="legend">
+        <summary class="legend-title">Heat-map guide (wrong guesses)</summary>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-pending)"></span> Selected (awaiting your confirmation)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-border)"></span> Right next door</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-veryclose)"></span> Very close (&lt;2,000 km)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-moderate)"></span> Moderate (2,000–5,000 km)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-far)"></span> Far (5,000–9,000 km)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-veryfar)"></span> Very far (&gt;9,000 km)</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:var(--correct)"></span> Correct!</div>
+      </details>
+
       <div class="flag-stage">
         <div class="flag-emoji" id="flag-display">🌐</div>
         <span class="spin-label" id="spin-label">SPINNING…</span>
@@ -372,17 +457,6 @@
       <div class="action-row">
         <button id="main-btn">Spin the Globe</button>
       </div>
-
-      <div class="legend">
-        <div class="legend-title">Heat-map guide (wrong guesses)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-pending)"></span> Selected (awaiting your confirmation)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-border)"></span> Right next door</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-veryclose)"></span> Very close (&lt;2,000 km)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-moderate)"></span> Moderate (2,000–5,000 km)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-far)"></span> Far (5,000–9,000 km)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-veryfar)"></span> Very far (&gt;9,000 km)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:var(--correct)"></span> Correct!</div>
-      </div>
     </div>
 
     <div class="map-wrap">
@@ -401,6 +475,10 @@
         </div>
       </div>
       <div class="map-hint-text">Drag to pan · pinch or scroll to zoom · tap a country, then confirm to lock in your guess</div>
+      <div class="scale-bar" id="scale-bar">
+        <div class="scale-bar-line" id="scale-bar-line"></div>
+        <div class="scale-bar-label" id="scale-bar-label">— km</div>
+      </div>
     </div>
   </main>
 
@@ -419,6 +497,10 @@
 
 <div class="overlay hidden" id="end-overlay">
   <div class="overlay-card">
+    <div class="win-banner hidden" id="win-banner">
+      <div class="banner-text">🎉 Well done Louise! 🎉</div>
+      <div class="puppy-emoji">🐶</div>
+    </div>
     <h2>Game Over</h2>
     <div class="lost-flag" id="lost-flag-block"></div>
     <p id="end-para">You correctly identified</p>
@@ -435,6 +517,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script>
 (function(){
   "use strict";
@@ -736,7 +820,10 @@
     60:"United Kingdom (Bermuda)", 136:"United Kingdom (Cayman Islands)", 92:"United Kingdom (British Virgin Islands)",
     238:"United Kingdom (Falkland Islands)", 292:"United Kingdom (Gibraltar)", 796:"United Kingdom (Turks and Caicos Islands)",
     660:"United Kingdom (Anguilla)", 500:"United Kingdom (Montserrat)",
-    533:"Netherlands (Aruba)", 531:"Netherlands (Curaçao)", 534:"Netherlands (Sint Maarten)",
+    533:"Netherlands (Aruba)", 531:"Netherlands (Curaçao)", 534:"Netherlands (Sint Maarten)", 535:"Netherlands (Caribbean Netherlands)",
+    663:"France (Saint Martin)", 652:"France (Saint Barthélemy)",
+    654:"United Kingdom (Saint Helena)", 574:"Australia (Norfolk Island)",
+    162:"Australia (Christmas Island)", 166:"Australia (Cocos Islands)", 612:"United Kingdom (Pitcairn Islands)", 86:"United Kingdom (British Indian Ocean Territory)",
     344:"China (Hong Kong)", 446:"China (Macau)", 234:"Denmark (Faroe Islands)",
     184:"New Zealand (Cook Islands)", 570:"New Zealand (Niue)", 772:"New Zealand (Tokelau)",
     10:"Antarctica (no sovereign country)"
@@ -775,6 +862,7 @@
 
   /* ============ STATE ============ */
   let deck = [];
+  let hintPieces = [];
   let target = null;
   let attempt = 1;
   let streak = 0;
@@ -795,10 +883,44 @@
   const playerNameInput = document.getElementById("player-name-input");
   let playerName = "Anonymous";
 
-  /* ============ LEADERBOARD (saved locally in this browser) ============ */
-  const LEADERBOARD_KEY = "louisesflaggame_leaderboard_v1";
+  /* ============ LEADERBOARD ============
+     By default this saves locally (localStorage), which only that one
+     browser/device can see. To make it a real shared leaderboard across
+     everyone who plays, fill in FIREBASE_CONFIG below with your own free
+     Firebase project's values (see the README for step-by-step setup).
+     Until then, apiKey stays as the placeholder string and the game
+     automatically uses the local-only fallback - nothing breaks.
+  */
+  const FIREBASE_CONFIG = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID"
+  };
 
-  function loadLeaderboard(){
+  const LEADERBOARD_KEY = "louisesflaggame_leaderboard_v1";
+  let firebaseEnabled = false;
+  let leaderboardRef = null;
+
+  try {
+    if (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== "undefined"){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      leaderboardRef = firebase.database().ref("leaderboard");
+      firebaseEnabled = true;
+    }
+  } catch (e) {
+    console.warn("Firebase leaderboard not available, using local-only leaderboard.", e);
+    firebaseEnabled = false;
+  }
+
+  const leaderboardNoteEl = document.querySelector(".leaderboard-note");
+  if (leaderboardNoteEl){
+    leaderboardNoteEl.textContent = firebaseEnabled
+      ? "Shared leaderboard — visible to everyone who plays"
+      : "Saved on this device/browser only";
+  }
+
+  function loadLocalLeaderboard(){
     try {
       const raw = localStorage.getItem(LEADERBOARD_KEY);
       const list = raw ? JSON.parse(raw) : [];
@@ -808,13 +930,44 @@
     }
   }
 
-  function saveScoreToLeaderboard(name, score){
-    const list = loadLeaderboard();
-    const entry = { name: name || "Anonymous", score: score, ts: Date.now() };
+  function saveLocalEntry(entry){
+    const list = loadLocalLeaderboard();
     list.push(entry);
     list.sort((a, b) => b.score - a.score);
     const top10 = list.slice(0, 10);
     try { localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(top10)); } catch (e) { /* ignore */ }
+    return top10;
+  }
+
+  async function loadTop10(){
+    if (firebaseEnabled){
+      try {
+        const snap = await leaderboardRef.orderByChild("score").limitToLast(50).once("value");
+        const list = [];
+        snap.forEach(child => { list.push(child.val()); });
+        list.sort((a, b) => b.score - a.score);
+        return list.slice(0, 10);
+      } catch (e) {
+        console.warn("Could not reach shared leaderboard, showing local scores instead.", e);
+        return loadLocalLeaderboard();
+      }
+    }
+    return loadLocalLeaderboard();
+  }
+
+  async function saveScoreToLeaderboard(name, score){
+    const entry = { name: name || "Anonymous", score: score, ts: Date.now() };
+    if (firebaseEnabled){
+      try {
+        await leaderboardRef.push().set(entry);
+      } catch (e) {
+        console.warn("Could not save to shared leaderboard, saving locally instead.", e);
+        saveLocalEntry(entry);
+      }
+    } else {
+      saveLocalEntry(entry);
+    }
+    const top10 = await loadTop10();
     return { top10, entry };
   }
 
@@ -853,13 +1006,13 @@
     const displayName = info ? info.name : territoryLabel;
     confirmText.innerHTML = displayName
       ? "Are you sure you want to lock in <strong>" + displayName + "</strong>?"
-      : "Are you sure you want to lock in this location?";
+      : "This spot doesn't match a country in the game (likely an uninhabited or disputed area) — lock it in anyway as a guess?";
     confirmPopup.classList.remove("hidden");
   }
 
   function clearPendingHighlight(){
     if (pendingGuessIso === null) return;
-    if (pathsSel) pathsSel.filter(d => +d.id === pendingGuessIso).classed("tier-pending", false);
+    if (pathsSel) pathsSel.filter(d => d.resolvedIso === pendingGuessIso).classed("tier-pending", false);
     if (markerGroups) markerGroups.filter(c => c.iso === pendingGuessIso).select(".marker-dot").classed("tier-pending", false);
   }
 
@@ -914,14 +1067,15 @@
   }
 
   const zoomBehavior = d3.zoom()
-    .scaleExtent([1, 250])
+    .scaleExtent([1, 550])
     .on("zoom", (event) => {
       zoomLayer.attr("transform", event.transform);
+      const k = event.transform.k;
       if (markerGroups) {
-        const k = event.transform.k;
         markerGroups.select("circle:nth-child(1)").attr("r", 16 / k);
         markerGroups.select(".marker-dot").attr("r", 5 / k);
       }
+      updateScaleBar(k);
     });
 
   svg.call(zoomBehavior);
@@ -941,6 +1095,77 @@
     zoomBehavior.translateExtent([[-mapW * 2, -mapH * 2], [mapW * 3, mapH * 3]]);
   }
 
+  /* ============ SCALE BAR ============
+     Uses the projection to work out how many screen pixels correspond to
+     one degree of longitude at the equator, converts that to pixels-per-km,
+     then picks a "nice" round distance (1, 2, 5, 10, 20, 50... km) whose
+     bar fits a target width. Recomputed whenever the map is re-fit, and
+     rescaled live as the zoom level changes.
+  */
+  const NICE_KM_STEPS = [1,2,5,10,20,50,100,200,500,1000,2000,5000,10000,20000];
+  let basePixelsPerKm = 0;
+
+  function computeScaleBarBase(){
+    const p0 = projection([0, 0]);
+    const p1 = projection([1, 0]); // 1 degree of longitude at the equator
+    if (!p0 || !p1){ basePixelsPerKm = 0; return; }
+    const basePixelsPerDegree = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+    basePixelsPerKm = basePixelsPerDegree / 111.32;
+  }
+
+  function updateScaleBar(k){
+    const lineEl = document.getElementById("scale-bar-line");
+    const labelEl = document.getElementById("scale-bar-label");
+    if (!basePixelsPerKm || !lineEl || !labelEl) return;
+    const screenPixelsPerKm = basePixelsPerKm * k;
+    const maxBarPx = 90;
+    let chosen = NICE_KM_STEPS[0];
+    for (const d of NICE_KM_STEPS){
+      if (d * screenPixelsPerKm <= maxBarPx) chosen = d; else break;
+    }
+    const widthPx = Math.max(16, chosen * screenPixelsPerKm);
+    lineEl.style.width = widthPx + "px";
+    labelEl.textContent = chosen.toLocaleString() + " km";
+  }
+
+  function resolveFeatureIso(feature){
+    const rawIso = +feature.id;
+    if (byIso.has(rawIso)) return rawIso;
+    if (TERRITORIES[rawIso]) return rawIso;
+
+    // Fallback #1: some map features (a known Natural Earth data quirk,
+    // e.g. France and Norway) carry a non-standard id. Test whether a
+    // known capital falls inside this shape.
+    for (const c of COUNTRIES){
+      try {
+        if (d3.geoContains(feature, [c.lon, c.lat])) return c.iso;
+      } catch (e) { /* ignore malformed geometry, keep checking others */ }
+    }
+
+    // Fallback #2: remote outlying islands/fragments (e.g. a small island
+    // far from its own mainland capital) won't be caught by fallback #1.
+    // A bounding-box midpoint is more robust than a true area centroid for
+    // tiny or oddly-shaped slivers, and we always attribute to the nearest
+    // country's capital - no distance cutoff - so a name is guaranteed.
+    try {
+      const bounds = d3.geoBounds(feature);
+      const midLon = (bounds[0][0] + bounds[1][0]) / 2;
+      const midLat = (bounds[0][1] + bounds[1][1]) / 2;
+      if (isFinite(midLon) && isFinite(midLat)){
+        let bestIso = null, bestKm = Infinity;
+        for (const c of COUNTRIES){
+          const km = haversineKm(midLat, midLon, c.lat, c.lon);
+          if (km < bestKm){ bestKm = km; bestIso = c.iso; }
+        }
+        if (bestIso !== null) return bestIso;
+      }
+    } catch (e) { /* ignore and fall through to the last-resort default */ }
+
+    // Absolute last resort (should essentially never trigger): default to
+    // the first country in the list rather than leaving the shape unnamed.
+    return COUNTRIES[0].iso;
+  }
+
   function buildMap(){
     const size = measureMapWrap();
     mapW = size.w; mapH = size.h;
@@ -948,19 +1173,21 @@
     projection.fitSize([mapW, mapH], geoData);
     pathGen = d3.geoPath(projection);
 
+    geoData.features.forEach(f => { f.resolvedIso = resolveFeatureIso(f); });
+
     pathsSel = zoomLayer.selectAll("path.country")
       .data(geoData.features)
       .enter()
       .append("path")
       .attr("class", "country")
       .attr("d", pathGen)
-      .attr("data-iso", d => +d.id)
-      .on("click", function(event, d){ requestGuessConfirmation(+d.id); });
+      .attr("data-iso", d => d.resolvedIso)
+      .on("click", function(event, d){ requestGuessConfirmation(d.resolvedIso); });
 
     // A handful of very small nations aren't present as polygons at this
     // map resolution. Give each of those a small clickable gold marker
     // at its capital's coordinates so all 196 countries stay guessable.
-    const presentIso = new Set(geoData.features.map(f => +f.id));
+    const presentIso = new Set(geoData.features.map(f => f.resolvedIso).filter(iso => byIso.has(iso)));
     const missing = COUNTRIES.filter(c => !presentIso.has(c.iso));
 
     markerGroups = zoomLayer.selectAll("g.marker")
@@ -978,6 +1205,8 @@
     markerGroups.append("circle").attr("class", "marker-dot").attr("r", 5);
 
     updateTranslateExtent();
+    computeScaleBarBase();
+    updateScaleBar(1);
     mapStatus.textContent = "Drag to pan · pinch/scroll to zoom · tap + confirm to guess";
     mapStatus.classList.add("show");
   }
@@ -998,6 +1227,8 @@
       });
     }
     updateTranslateExtent();
+    computeScaleBarBase();
+    updateScaleBar(1);
     svg.call(zoomBehavior.transform, d3.zoomIdentity);
   }
 
@@ -1027,7 +1258,7 @@
   }
 
   function highlightIso(iso, className){
-    if (pathsSel) pathsSel.filter(d => +d.id === iso).classed(className, true);
+    if (pathsSel) pathsSel.filter(d => d.resolvedIso === iso).classed(className, true);
     if (markerGroups) markerGroups.filter(c => c.iso === iso).select(".marker-dot").classed(className, true);
   }
 
@@ -1055,6 +1286,7 @@
     roundActive = false;
     hintBox.classList.remove("show");
     hintBox.textContent = "";
+    hintPieces = [];
     proximityTag.classList.remove("show");
     proximityTag.className = "proximity-tag";
     resetAttemptDots();
@@ -1107,7 +1339,9 @@
       scoreValue.textContent = streak + " / " + TOTAL;
       instructions.innerHTML =
         "🎉 Correct! That's <strong>" + target.name + "</strong>.<br>" +
+        "<strong>Continent:</strong> " + target.continent + "<br>" +
         "<strong>Fact:</strong> " + target._chosenFact + "<br>" +
+        "<strong>Capital:</strong> " + target.capital + "<br>" +
         "<strong>National dish:</strong> " + target.dish;
       hintBox.classList.remove("show");
       proximityTag.classList.remove("show");
@@ -1152,14 +1386,16 @@
 
     if (attempt === 1){
       attempt = 2;
+      hintPieces.push("<strong>Hint:</strong> This country is in " + target.continent + ".<br><strong>Fun fact:</strong> " + target._chosenFact);
       hintBox.classList.add("show");
-      hintBox.innerHTML = "<strong>Hint:</strong> This country is in " + target.continent + ".<br><strong>Fun fact:</strong> " + target._chosenFact;
+      hintBox.innerHTML = hintPieces.join('<hr style="margin:8px 0; border:none; border-top:1px solid rgba(0,0,0,0.15);">');
       instructions.textContent = "Not quite — try again. Attempt 2 of 3.";
       if (attemptDots[1]) attemptDots[1].classList.add("current");
     } else if (attempt === 2){
       attempt = 3;
+      hintPieces.push("<strong>Capital:</strong> " + target.capital + "<br><strong>National dish:</strong> " + target.dish);
       hintBox.classList.add("show");
-      hintBox.innerHTML = "<strong>Capital:</strong> " + target.capital + "<br><strong>National dish:</strong> " + target.dish;
+      hintBox.innerHTML = hintPieces.join('<hr style="margin:8px 0; border:none; border-top:1px solid rgba(0,0,0,0.15);">');
       instructions.textContent = "One more try. Attempt 3 of 3.";
       if (attemptDots[2]) attemptDots[2].classList.add("current");
     } else {
@@ -1182,32 +1418,36 @@
 
   mainBtn.onclick = spinButtonHandler;
 
-  function showEndOverlay(won){
+  async function showEndOverlay(won){
     document.getElementById("final-score").textContent = streak + " / " + TOTAL;
     const lostBlock = document.getElementById("lost-flag-block");
     const heading = endOverlay.querySelector("h2");
     const para = document.getElementById("end-para");
+    const winBanner = document.getElementById("win-banner");
+
+    const summaryHtml =
+      '<div class="lost-emoji">' + emojiFlag(target.iso2) + '</div>' +
+      '<div class="lost-name"><strong>' + target.name + '</strong>Continent: ' + target.continent +
+      '<br>Capital: ' + target.capital +
+      '<br>National dish: ' + target.dish + '<br>Fact: ' + target._chosenFact + '</div>';
 
     if (won){
       heading.textContent = "Every Flag, Correct!";
       para.textContent = "You identified every single flag in the game. Amazing streak of";
-      lostBlock.innerHTML =
-        '<div class="lost-emoji">' + emojiFlag(target.iso2) + '</div>' +
-        '<div class="lost-name"><strong>' + target.name + '</strong>Capital: ' + target.capital +
-        '<br>National dish: ' + target.dish + '<br>Fact: ' + target._chosenFact + '</div>';
+      lostBlock.innerHTML = summaryHtml;
+      winBanner.classList.remove("hidden");
     } else {
       heading.textContent = "Game Over";
       para.textContent = "You correctly identified";
-      lostBlock.innerHTML =
-        '<div class="lost-emoji">' + emojiFlag(target.iso2) + '</div>' +
-        '<div class="lost-name"><strong>' + target.name + '</strong>Capital: ' + target.capital +
-        '<br>National dish: ' + target.dish + '<br>Fact: ' + target._chosenFact + '</div>';
+      lostBlock.innerHTML = summaryHtml;
+      winBanner.classList.add("hidden");
     }
 
-    const { top10, entry } = saveScoreToLeaderboard(playerName, streak);
-    renderLeaderboard(top10, entry);
-
+    document.getElementById("leaderboard-list").innerHTML = "<li>Loading…</li>";
     endOverlay.classList.remove("hidden");
+
+    const { top10, entry } = await saveScoreToLeaderboard(playerName, streak);
+    renderLeaderboard(top10, entry);
   }
 
   document.getElementById("start-btn").addEventListener("click", startGame);
