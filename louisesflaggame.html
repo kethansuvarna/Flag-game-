@@ -110,7 +110,7 @@
     background: var(--parchment);
     color: var(--ink);
     border-radius: 14px;
-    padding: 16px;
+    padding: 11px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.35);
     flex-shrink: 0;
   }
@@ -120,7 +120,7 @@
     background: var(--ocean-deep);
     border: 3px solid var(--brass);
     border-radius: 10px;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 8 / 3;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -128,7 +128,7 @@
     position: relative;
   }
   .flag-emoji {
-    font-size: clamp(64px, 18vw, 96px);
+    font-size: clamp(44px, 12vw, 68px);
     line-height: 1;
     filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));
     user-select: none;
@@ -139,13 +139,13 @@
   }
   .flag-stage .spin-label.show { display: block; }
 
-  .attempt-row { display: flex; justify-content: center; gap: 6px; margin: 12px 0 6px; }
+  .attempt-row { display: flex; justify-content: center; gap: 6px; margin: 8px 0 4px; }
   .attempt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--parchment-dim); border: 1px solid var(--ink); }
   .attempt-dot.used-correct { background: var(--correct); }
   .attempt-dot.used-wrong { background: #94a3b8; }
   .attempt-dot.current { background: var(--brass); }
 
-  .instructions { text-align: center; font-size: 14px; line-height: 1.4; min-height: 40px; margin-top: 4px; }
+  .instructions { text-align: center; font-size: 14px; line-height: 1.4; min-height: 28px; margin-top: 2px; }
 
   .hint-box {
     margin-top: 10px;
@@ -172,7 +172,7 @@
   }
   .proximity-tag.show { display: block; }
 
-  .action-row { margin-top: 14px; display: flex; justify-content: center; }
+  .action-row { margin-top: 9px; display: flex; justify-content: center; }
 
   button {
     font-family: "Work Sans", sans-serif;
@@ -191,9 +191,9 @@
   button:disabled { opacity: 0.45; cursor: default; transform: none; }
 
   .legend {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     border-bottom: 1px solid rgba(0,0,0,0.15);
-    padding-bottom: 10px;
+    padding-bottom: 6px;
     font-size: 11px;
   }
   .legend-title {
@@ -222,13 +222,13 @@
     overflow: hidden;
     position: relative;
     width: 100%;
-    aspect-ratio: 1.92 / 1;
+    aspect-ratio: 0.96 / 1;
   }
   @media (min-width: 860px) {
-    .map-wrap { flex: 1; aspect-ratio: auto; min-height: 640px; align-self: stretch; }
+    .map-wrap { flex: 1; aspect-ratio: auto; min-height: 1275px; align-self: stretch; }
   }
   @media (min-width: 1200px) {
-    .map-wrap { min-height: 760px; }
+    .map-wrap { min-height: 1515px; }
   }
   #map-svg { width: 100%; height: 100%; display: block; touch-action: none; }
 
