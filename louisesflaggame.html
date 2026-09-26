@@ -209,6 +209,69 @@
   .legend-title::after { content: "▾"; font-size: 10px; color: var(--brass-bright); transition: transform 0.15s ease; }
   .legend[open] .legend-title::after { transform: rotate(180deg); }
   .legend .legend-row:first-of-type { margin-top: 8px; }
+
+  .search-wrap {
+    position: relative;
+    margin-top: 8px;
+  }
+  #country-search-input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: "Work Sans", sans-serif;
+    border: 2px solid var(--brass);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    box-sizing: border-box;
+  }
+  #country-search-input:focus { outline: none; border-color: var(--brass-bright); }
+  .search-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% - 2px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 2px solid var(--brass);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 190px;
+    overflow-y: auto;
+    z-index: 25;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  }
+  .search-dropdown.show { display: block; }
+  .search-dropdown-item { padding: 8px 10px; font-size: 13px; cursor: pointer; }
+  .search-dropdown-item:hover, .search-dropdown-item.active { background: var(--parchment); }
+
+  .browser-view {
+    margin-top: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 8px;
+  }
+  .browser-view.hidden { display: none; }
+  .browser-item {
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  .browser-item:last-child { border-bottom: none; }
+  .browser-item:hover { background: rgba(0,0,0,0.06); }
+  .browser-back {
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b4e00;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0,0,0,0.15);
+    background: rgba(0,0,0,0.03);
+    position: sticky;
+    top: 0;
+  }
   .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 
@@ -251,6 +314,15 @@
   #map-svg .tier-unknown { fill: var(--tier-unknown) !important; }
   #map-svg .tier-pending { fill: var(--tier-pending) !important; }
 
+  #map-svg .dateline {
+    fill: none;
+    stroke: var(--cream);
+    stroke-width: 1.2;
+    stroke-dasharray: 5 4;
+    opacity: 0.55;
+    vector-effect: non-scaling-stroke;
+  }
+
   .marker-dot { fill: var(--brass); stroke: var(--ocean-deep); stroke-width: 1; }
   g.marker:hover .marker-dot { fill: var(--brass-bright); }
   g.marker { cursor: pointer; }
@@ -281,13 +353,16 @@
   .scale-bar {
     position: absolute;
     bottom: 30px;
-    right: 12px;
+    left: 12px;
     z-index: 6;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    pointer-events: none;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
   }
+  .scale-bar:active { cursor: grabbing; }
   .scale-bar-line {
     height: 4px;
     background: var(--cream);
@@ -434,6 +509,20 @@
         <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-far)"></span> Far (5,000–9,000 km)</div>
         <div class="legend-row"><span class="legend-swatch" style="background:var(--tier-veryfar)"></span> Very far (&gt;9,000 km)</div>
         <div class="legend-row"><span class="legend-swatch" style="background:var(--correct)"></span> Correct!</div>
+      </details>
+
+      <details class="legend">
+        <summary class="legend-title">🔍 Search for a country (optional)</summary>
+        <div class="search-wrap">
+          <input type="text" id="country-search-input" placeholder="Type a country name…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <div class="search-dropdown" id="search-dropdown"></div>
+        </div>
+      </details>
+
+      <details class="legend" id="continent-browser">
+        <summary class="legend-title">🌍 Browse by continent (optional)</summary>
+        <div id="continent-view" class="browser-view"></div>
+        <div id="country-view" class="browser-view hidden"></div>
       </details>
 
       <div class="flag-stage">
@@ -1053,6 +1142,7 @@
   const zoomLayer = svg.append("g").attr("id", "zoom-layer");
   let pathsSel = null;
   let markerGroups = null;
+  let datelineSel = null;
   let projection = d3.geoNaturalEarth1();
   let pathGen = d3.geoPath(projection);
   let geoData = null;
@@ -1125,7 +1215,46 @@
     }
     const widthPx = Math.max(16, chosen * screenPixelsPerKm);
     lineEl.style.width = widthPx + "px";
-    labelEl.textContent = chosen.toLocaleString() + " km";
+    labelEl.textContent = "⇔ " + chosen.toLocaleString() + " km";
+  }
+
+  /* ---- Scale bar dragging (x-axis only) ---- */
+  const scaleBarEl = document.getElementById("scale-bar");
+  let scaleBarLeftRatio = null; // null = default bottom-right position
+  let scaleBarDragging = false;
+  let scaleBarPointerStartX = 0;
+  let scaleBarStartLeft = 0;
+
+  function positionScaleBar(){
+    if (!scaleBarEl) return;
+    const wrapWidth = mapWrapEl.clientWidth;
+    const barWidth = scaleBarEl.offsetWidth || 70;
+    const maxLeft = Math.max(0, wrapWidth - barWidth);
+    let left = scaleBarLeftRatio === null ? (maxLeft - 12) : (scaleBarLeftRatio * maxLeft);
+    left = Math.max(0, Math.min(left, maxLeft));
+    scaleBarEl.style.left = left + "px";
+  }
+
+  if (scaleBarEl){
+    scaleBarEl.addEventListener("pointerdown", (e) => {
+      scaleBarDragging = true;
+      scaleBarPointerStartX = e.clientX;
+      scaleBarStartLeft = parseFloat(scaleBarEl.style.left || "0");
+      scaleBarEl.setPointerCapture(e.pointerId);
+    });
+    scaleBarEl.addEventListener("pointermove", (e) => {
+      if (!scaleBarDragging) return;
+      const wrapWidth = mapWrapEl.clientWidth;
+      const barWidth = scaleBarEl.offsetWidth || 70;
+      const maxLeft = Math.max(0, wrapWidth - barWidth);
+      let left = scaleBarStartLeft + (e.clientX - scaleBarPointerStartX);
+      left = Math.max(0, Math.min(left, maxLeft));
+      scaleBarEl.style.left = left + "px";
+      scaleBarLeftRatio = maxLeft > 0 ? (left / maxLeft) : 0;
+    });
+    const endScaleBarDrag = () => { scaleBarDragging = false; };
+    scaleBarEl.addEventListener("pointerup", endScaleBarDrag);
+    scaleBarEl.addEventListener("pointercancel", endScaleBarDrag);
   }
 
   function resolveFeatureIso(feature){
@@ -1204,9 +1333,27 @@
     markerGroups.append("circle").attr("r", 16).attr("fill", "#000").attr("fill-opacity", 0.01);
     markerGroups.append("circle").attr("class", "marker-dot").attr("r", 5);
 
+    // International Date Line - drawn along the ±180° meridian. On this
+    // (non-interrupted) projection, +180 and -180 project to the map's
+    // right and left edges respectively, even though they're the same
+    // meridian on the globe, so both are drawn.
+    function datelineFeature(lon){
+      const coords = [];
+      for (let lat = -90; lat <= 90; lat += 2) coords.push([lon, lat]);
+      return { type: "Feature", geometry: { type: "LineString", coordinates: coords } };
+    }
+    datelineSel = zoomLayer.selectAll("path.dateline")
+      .data([datelineFeature(180), datelineFeature(-180)])
+      .enter()
+      .append("path")
+      .attr("class", "dateline")
+      .attr("d", pathGen)
+      .style("pointer-events", "none");
+
     updateTranslateExtent();
     computeScaleBarBase();
     updateScaleBar(1);
+    positionScaleBar();
     mapStatus.textContent = "Drag to pan · pinch/scroll to zoom · tap + confirm to guess";
     mapStatus.classList.add("show");
   }
@@ -1220,6 +1367,7 @@
     projection.fitSize([mapW, mapH], geoData);
     pathGen = d3.geoPath(projection);
     if (pathsSel) pathsSel.attr("d", pathGen);
+    if (datelineSel) datelineSel.attr("d", pathGen);
     if (markerGroups) {
       markerGroups.attr("transform", c => {
         const p = projection([c.lon, c.lat]);
@@ -1229,6 +1377,7 @@
     updateTranslateExtent();
     computeScaleBarBase();
     updateScaleBar(1);
+    positionScaleBar();
     svg.call(zoomBehavior.transform, d3.zoomIdentity);
   }
 
@@ -1276,9 +1425,124 @@
     prepareNextRound();
   }
 
+  /* ============ OPTIONAL COUNTRY SEARCH ============ */
+  const searchInput = document.getElementById("country-search-input");
+  const searchDropdown = document.getElementById("search-dropdown");
+
+  function currentSearchMatches(){
+    const q = (searchInput.value || "").trim().toLowerCase();
+    if (!q) return [];
+    return COUNTRIES.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
+  }
+
+  function renderSearchDropdown(){
+    const matches = currentSearchMatches();
+    searchDropdown.innerHTML = "";
+    if (matches.length === 0){
+      searchDropdown.classList.remove("show");
+      return;
+    }
+    matches.forEach(c => {
+      const item = document.createElement("div");
+      item.className = "search-dropdown-item";
+      item.textContent = c.name;
+      item.addEventListener("click", () => submitSearchGuess(c));
+      searchDropdown.appendChild(item);
+    });
+    searchDropdown.classList.add("show");
+  }
+
+  function submitSearchGuess(country){
+    searchInput.value = "";
+    searchDropdown.innerHTML = "";
+    searchDropdown.classList.remove("show");
+    handleMapClick(country.iso);
+  }
+
+  function resetSearchBox(){
+    if (searchInput) searchInput.value = "";
+    if (searchDropdown){ searchDropdown.innerHTML = ""; searchDropdown.classList.remove("show"); }
+  }
+
+  /* ============ BROWSE BY CONTINENT ============ */
+  const continentBrowserEl = document.getElementById("continent-browser");
+  const continentViewEl = document.getElementById("continent-view");
+  const countryViewEl = document.getElementById("country-view");
+
+  function getContinentsAlphabetical(){
+    return Array.from(new Set(COUNTRIES.map(c => c.continent))).sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderContinentList(){
+    if (!continentViewEl || !countryViewEl) return;
+    countryViewEl.classList.add("hidden");
+    continentViewEl.classList.remove("hidden");
+    continentViewEl.innerHTML = "";
+    getContinentsAlphabetical().forEach(continent => {
+      const item = document.createElement("div");
+      item.className = "browser-item";
+      item.textContent = continent;
+      item.addEventListener("click", () => renderCountryListForContinent(continent));
+      continentViewEl.appendChild(item);
+    });
+  }
+
+  function renderCountryListForContinent(continent){
+    if (!continentViewEl || !countryViewEl) return;
+    continentViewEl.classList.add("hidden");
+    countryViewEl.classList.remove("hidden");
+    countryViewEl.innerHTML = "";
+
+    const backRow = document.createElement("div");
+    backRow.className = "browser-back";
+    backRow.textContent = "← Back to continents";
+    backRow.addEventListener("click", renderContinentList);
+    countryViewEl.appendChild(backRow);
+
+    const countriesHere = COUNTRIES
+      .filter(c => c.continent === continent)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    countriesHere.forEach(c => {
+      const item = document.createElement("div");
+      item.className = "browser-item";
+      item.textContent = c.name;
+      item.addEventListener("click", () => {
+        handleMapClick(c.iso);
+        if (continentBrowserEl) continentBrowserEl.open = false;
+        renderContinentList();
+      });
+      countryViewEl.appendChild(item);
+    });
+  }
+
+  function resetContinentBrowser(){
+    renderContinentList();
+  }
+
+  renderContinentList();
+
+  if (searchInput){
+    searchInput.addEventListener("input", renderSearchDropdown);
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const matches = currentSearchMatches();
+      if (matches.length === 0) return;
+      const q = searchInput.value.trim().toLowerCase();
+      const exact = matches.find(c => c.name.toLowerCase() === q);
+      submitSearchGuess(exact || matches[0]);
+    });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".search-wrap")) searchDropdown.classList.remove("show");
+    });
+  }
+
   function prepareNextRound(){
     clearMapHighlights();
     hideConfirmPopup();
+    resetSearchBox();
+    resetContinentBrowser();
     refillDeckIfNeeded();
     target = deck.pop();
     target._chosenFact = target.facts[Math.floor(Math.random() * target.facts.length)];
