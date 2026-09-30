@@ -128,7 +128,7 @@
     position: relative;
   }
   .flag-emoji {
-    font-size: clamp(52px, 15vw, 80px);
+    font-size: clamp(78px, 22.5vw, 120px);
     line-height: 1;
     filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));
     user-select: none;
@@ -480,6 +480,7 @@
   .overlay-card .lost-flag .lost-emoji { font-size: 48px; line-height: 1; }
   .overlay-card .lost-flag .lost-name { text-align: left; font-size: 13px; }
   .overlay-card .lost-flag .lost-name strong { display: block; font-size: 15px; }
+  .correct-details { margin-top: 6px; font-size: 13px; line-height: 1.5; }
 
   footer { text-align: center; font-size: 9px; color: var(--parchment-dim); padding: 3px; opacity: 0.7; }
 </style>
@@ -581,6 +582,20 @@
     <p style="font-size:12px; opacity:0.75;">Wrong guesses light up in a color showing how close you got. 1st miss also reveals the continent and a fun fact · 2nd miss reveals the capital &amp; national dish.</p>
     <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20" autocomplete="off">
     <button id="start-btn">Start Playing</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="correct-overlay">
+  <div class="overlay-card">
+    <h2>🎉 Correct!</h2>
+    <div class="lost-flag">
+      <div class="lost-emoji" id="correct-flag-emoji"></div>
+      <div class="lost-name">
+        <strong id="correct-country-name"></strong>
+        <div id="correct-details" class="correct-details"></div>
+      </div>
+    </div>
+    <button id="correct-next-btn">Next Flag</button>
   </div>
 </div>
 
@@ -1601,23 +1616,13 @@
       roundActive = false;
       streak += 1;
       scoreValue.textContent = streak + " / " + TOTAL;
-      instructions.innerHTML =
-        "🎉 Correct! That's <strong>" + target.name + "</strong>.<br>" +
-        "<strong>Continent:</strong> " + target.continent + "<br>" +
-        "<strong>Fact:</strong> " + target._chosenFact + "<br>" +
-        "<strong>Capital:</strong> " + target.capital + "<br>" +
-        "<strong>National dish:</strong> " + target.dish;
+      instructions.textContent = "🎉 Correct! See the details, then tap Next Flag.";
       hintBox.classList.remove("show");
       proximityTag.classList.remove("show");
       attemptDots[attempt - 1].classList.remove("current");
       attemptDots[attempt - 1].classList.add("used-correct");
-      mainBtn.disabled = false;
-      mainBtn.textContent = "Next Flag";
-      mainBtn.onclick = advanceToNextFlag;
 
-      if (deck.length === 0){
-        setTimeout(() => { showEndOverlay(true); }, 600);
-      }
+      showCorrectPopup(target, deck.length === 0);
       return;
     }
 
@@ -1681,6 +1686,38 @@
   }
 
   mainBtn.onclick = spinButtonHandler;
+
+  /* ============ CORRECT-GUESS POPUP ============
+     Shown after every correct guess so the player can review the flag,
+     country name, and facts before moving on - without changing the
+     underlying page layout. The popup's own button drives what happens
+     next (either the following round, or the win screen if that was the
+     last country in the deck).
+  */
+  const correctOverlay = document.getElementById("correct-overlay");
+  const correctNextBtn = document.getElementById("correct-next-btn");
+  let correctPopupWasLastCountry = false;
+
+  function showCorrectPopup(country, isLastCountry){
+    document.getElementById("correct-flag-emoji").textContent = emojiFlag(country.iso2);
+    document.getElementById("correct-country-name").textContent = country.name;
+    document.getElementById("correct-details").innerHTML =
+      "<strong>Continent:</strong> " + country.continent + "<br>" +
+      "<strong>Fact:</strong> " + country._chosenFact + "<br>" +
+      "<strong>Capital:</strong> " + country.capital + "<br>" +
+      "<strong>National dish:</strong> " + country.dish;
+    correctPopupWasLastCountry = isLastCountry;
+    correctOverlay.classList.remove("hidden");
+  }
+
+  correctNextBtn.addEventListener("click", () => {
+    correctOverlay.classList.add("hidden");
+    if (correctPopupWasLastCountry){
+      showEndOverlay(true);
+    } else {
+      advanceToNextFlag();
+    }
+  });
 
   async function showEndOverlay(won){
     document.getElementById("final-score").textContent = streak + " / " + TOTAL;
