@@ -2,8 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Louise's Flag Game</title>
+
+<!-- PWA: web app manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a1e2c">
+
+<!-- PWA: iOS-specific Home Screen / standalone-app support.
+     iOS does not read the manifest's icons/display settings the way
+     Android does, so these tags are required in addition to it. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Flag Game">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,6 +46,7 @@
     margin: 0;
     padding: 0;
     height: 100%;
+    min-height: 100dvh;
     background: var(--ocean-deep);
     color: var(--cream);
     font-family: "Work Sans", sans-serif;
@@ -52,7 +66,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 9px 16px;
+    padding: calc(9px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 9px calc(16px + env(safe-area-inset-left, 0px));
     background: linear-gradient(180deg, var(--ocean) 0%, var(--ocean-deep) 100%);
     border-bottom: 2px solid var(--brass);
     position: sticky;
@@ -96,7 +110,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 8px 10px;
+    padding: 8px calc(10px + env(safe-area-inset-right, 0px)) 8px calc(10px + env(safe-area-inset-left, 0px));
     max-width: 1560px;
     width: 100%;
     margin: 0 auto;
@@ -185,6 +199,10 @@
     background: var(--brass);
     color: var(--ink);
     transition: transform 0.12s ease, background 0.12s ease;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   button:hover { background: var(--brass-bright); }
   button:active { transform: scale(0.96); }
@@ -292,6 +310,17 @@
   }
   @media (min-width: 1200px) {
     .map-wrap { min-height: 1515px; }
+  }
+  #map-svg,
+  .scale-bar,
+  .legend-title,
+  .search-dropdown-item,
+  .browser-item,
+  .browser-back {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   #map-svg { width: 100%; height: 100%; display: block; touch-action: none; }
 
@@ -466,7 +495,8 @@
   .overlay {
     position: fixed; inset: 0; background: rgba(10,30,44,0.92);
     display: flex; align-items: center; justify-content: center;
-    z-index: 50; padding: 20px;
+    z-index: 50;
+    padding: calc(20px + env(safe-area-inset-top, 0px)) calc(20px + env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) calc(20px + env(safe-area-inset-left, 0px));
   }
   .overlay.hidden { display: none; }
   .overlay-card {
@@ -506,6 +536,11 @@
   @keyframes bounce {
     0%, 100% { transform: translateY(0) scale(1); }
     50% { transform: translateY(-14px) scale(1.05); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .win-banner { animation: none; background-position: 0% center; }
+    .win-banner .puppy-emoji { animation: none; }
+    * { scroll-behavior: auto !important; }
   }
   .overlay-card p { font-size: 14px; line-height: 1.5; margin: 8px 0 18px; }
   .overlay-card .big-score { font-family: "Fraunces", serif; font-size: 42px; font-weight: 700; color: var(--correct); margin: 6px 0; }
@@ -561,7 +596,10 @@
     color: var(--ink);
   }
 
-  footer { text-align: center; font-size: 9px; color: var(--parchment-dim); padding: 3px; opacity: 0.7; }
+  footer {
+    text-align: center; font-size: 9px; color: var(--parchment-dim); opacity: 0.7;
+    padding: 3px 3px calc(3px + env(safe-area-inset-bottom, 0px));
+  }
 </style>
 </head>
 <body>
@@ -2054,6 +2092,35 @@
   document.getElementById("restart-btn").addEventListener("click", startGame);
 
 })();
+</script>
+
+<script>
+  // PWA: register the service worker for offline support and Home Screen
+  // installability. Relative path/scope so this works unmodified whether
+  // the game is hosted at a domain root or under a GitHub Pages project
+  // path like /Flag-game-/.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
+        .then((reg) => {
+          console.log("[PWA] service worker registered with scope", reg.scope);
+
+          // If a new service worker takes control (e.g. after you redeploy
+          // an update and the player reopens the app), reload once so they
+          // automatically get the fresh version instead of being stuck on
+          // whatever was already loaded in memory.
+          let hasReloaded = false;
+          navigator.serviceWorker.addEventListener("controllerchange", () => {
+            if (hasReloaded) return;
+            hasReloaded = true;
+            window.location.reload();
+          });
+        })
+        .catch((err) => {
+          console.warn("[PWA] service worker registration failed - the game will still work online.", err);
+        });
+    });
+  }
 </script>
 </body>
 </html>
